@@ -12,7 +12,7 @@
 ## 📊 Key Results
 
 <p align="center">
-  <img src="figures/fig4_model_comparison.png" width="80%" alt="Model comparison across TSS and AC">
+  <img src="paper/figures/fig4_model_comparison.png" width="80%" alt="Model comparison across TSS and AC">
 </p>
 
 | Finding | Result |
@@ -29,7 +29,7 @@
 Agents learn robust *procedures*—the recipe for solving a task—but vary in *instantiation details* like search queries, date formats, and message phrasing. Crucially, this parametric variance is **benign**: it doesn't hurt task success (r=0.12, n.s.). Structural variance is where failures concentrate.
 
 <p align="center">
-  <img src="figures/fig10_correctness_vs_consistency.png" width="80%" alt="Consistency predicts correctness">
+  <img src="paper/figures/fig10_correctness_vs_consistency.png" width="80%" alt="Consistency predicts correctness">
 </p>
 
 ---
@@ -47,8 +47,8 @@ Agents learn robust *procedures*—the recipe for solving a task—but vary in *
 | Ambiguous | 4 | Intentionally underspecified (e.g., "prepare for my meetings tomorrow") | Low |
 
 <p align="center">
-  <img src="figures/fig1_consistency_by_category.png" width="48%" alt="Consistency by category">
-  <img src="figures/fig7_model_category_heatmap.png" width="48%" alt="Model × category heatmap">
+  <img src="paper/figures/fig1_consistency_by_category.png" width="48%" alt="Consistency by category">
+  <img src="paper/figures/fig7_model_category_heatmap.png" width="48%" alt="Model × category heatmap">
 </p>
 
 All tools are **fully deterministic**—identical inputs always produce identical outputs. This isolates LLM variance from environment variance.
@@ -90,7 +90,7 @@ All runs at **temperature 1.0** (default deployment conditions).
 4. **Use TSS as a reliability proxy** — high structural consistency predicts task success without needing correctness labels
 
 <p align="center">
-  <img src="figures/fig3_divergence_points.png" width="60%" alt="Divergence points distribution">
+  <img src="paper/figures/fig3_divergence_points.png" width="60%" alt="Divergence points distribution">
 </p>
 
 ---
