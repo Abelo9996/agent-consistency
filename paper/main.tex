@@ -1,0 +1,392 @@
+\documentclass[letterpaper]{article}
+
+% Standard packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{subcaption}
+\usepackage{multirow}
+\usepackage[margin=1in]{geometry}
+\usepackage{enumitem}
+
+\title{How Consistent Are LLM Agents? \\
+Measuring Behavioral Reproducibility in Multi-Step Tool-Calling Pipelines}
+
+\author{
+  Abel Yagubyan \\
+  Independent Researcher \\
+  \texttt{abel.yagubyan@gmail.com}
+}
+
+\date{February 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Large language model (LLM) agents with tool-calling capabilities are increasingly deployed in production systems, yet a fundamental question remains underexplored: \textit{does the same agent behave the same way twice?} We present the first systematic study of \textbf{behavioral consistency in multi-step tool-calling agents}, measuring whether agents select the same tools, with the same arguments, in the same order across repeated identical invocations. Using a benchmark of 19 tasks across 5 categories---data retrieval, scheduling, computation, multi-tool composition, and ambiguous requests---we evaluate 6 models from 3 providers (OpenAI, Anthropic, Meta/Together) with 10 runs per task-model pair (1,140 total agent traces). We find that: (1)~\textbf{tool selection order is significantly more consistent than argument choice} (mean TSS $= 0.87$ vs.\ AC $= 0.69$; Cohen's $d = 0.75$, $p < 0.001$); (2)~\textbf{ambiguous tasks reduce argument consistency by 28\%} relative to structured tasks (Cohen's $d = 0.74$, $p = 0.001$); (3)~\textbf{60\% of behavioral divergence originates in the first two steps}; (4)~\textbf{natural language outputs almost never match} ($<$5\% exact match) even when tool-calling behavior is identical; and (5)~\textbf{models differ significantly in structural consistency} (ANOVA $F = 3.52$, $p = 0.003$, $\eta^2 = 0.15$). Furthermore, a retroactive correctness analysis reveals that \textbf{structural consistency predicts task success}: high-TSS conditions achieve 90.2\% correctness versus 61.2\% for low-TSS conditions (Cohen's $d = 0.81$, $p < 0.001$), while argument-level variance is largely benign ($r = 0.12$, $p = 0.31$). These findings have direct implications for agent reliability, testing, and monitoring in production deployments. We release our benchmark, traces, and analysis code at \url{https://github.com/Abelo9996/agent-consistency}.
+\end{abstract}
+
+%% ====================================================================
+\section{Introduction}
+%% ====================================================================
+
+The deployment of LLM-based agents with tool-calling capabilities has accelerated rapidly. Modern agents can search databases, send emails, manage calendars, and orchestrate multi-step workflows through structured function calls~\cite{qin2023toolllm,li2023apibank,schick2023toolformer}. However, a fundamental question remains underexplored: \textit{if you run the same agent on the same task twice, do you get the same behavior?}
+
+This question matters for several practical reasons:
+\begin{itemize}[nosep]
+    \item \textbf{Testing:} If agents behave differently each run, how do you write reliable tests?
+    \item \textbf{Debugging:} When an agent fails, can you reproduce the failure?
+    \item \textbf{Safety:} Can you guarantee an agent won't take an unexpected action on a re-run?
+    \item \textbf{Cost optimization:} If behavior varies, can you route tasks to cheaper models based on predicted consistency?
+\end{itemize}
+
+Recent work by Mehta et al.~\cite{mehta2026disagree} measured behavioral consistency in ReAct-style agents~\cite{yao2023react} on HotpotQA, finding that agents produce 2.0--4.2 distinct action sequences per 10 runs. However, their study was limited to search-only actions in a question-answering setting. Real-world agents operate over \textit{structured tool-calling interfaces} with typed parameters, multiple tools, and multi-step pipelines---a fundamentally richer and more consequential action space.
+
+We extend this line of inquiry to \textbf{multi-step tool-calling agents} across diverse task categories. Our contributions:
+
+\begin{enumerate}[nosep]
+    \item A \textbf{benchmark of 19 tasks} spanning 5 categories (retrieval, scheduling, computation, composition, ambiguous) with 10 deterministic simulated tools.
+    \item \textbf{Multi-granularity consistency metrics}: tool sequence similarity, argument consistency, output agreement, and divergence point analysis.
+    \item A \textbf{statistically grounded evaluation across 6 models} from 3 providers (OpenAI, Anthropic, Meta/Together), with effect sizes and confidence intervals for all key claims.
+    \item The identification of a \textbf{``structural consistency, parametric variance'' pattern}: agents reliably select the same tools in the same order but vary significantly in how they parameterize those calls.
+    \item A \textbf{correctness analysis} showing that structural consistency predicts task success (Cohen's $d = 0.81$), while argument-level variance is benign---establishing TSS as a lightweight reliability proxy.
+\end{enumerate}
+
+%% ====================================================================
+\section{Related Work}
+%% ====================================================================
+
+\paragraph{Behavioral Consistency in LLMs.}
+Mehta et al.~\cite{mehta2026disagree} measured consistency in ReAct agents on HotpotQA, finding that inconsistency predicts failure. Their study used search-only actions; we extend to structured tool calls with typed arguments across diverse task types. Wang et al.~\cite{wang2023selfconsistency} showed that sampling multiple reasoning paths and marginalizing over them improves accuracy (self-consistency), but this addresses \textit{leveraging} variance rather than \textit{measuring} it. Renze and Guven~\cite{renze2024self} studied self-reflection in LLM agents, finding mixed effects on problem-solving performance.
+
+\paragraph{LLM Reliability and Robustness.}
+Prior work has studied sensitivity to prompt phrasing~\cite{sclar2024quantifying}, order effects~\cite{lu2022fantastically}, and temperature effects on generation quality. We focus specifically on \textit{tool-calling behavior}, which is structurally different from free-text generation: tool calls are discrete, typed, and have observable side effects.
+
+\paragraph{Agent Evaluation and Tool Use.}
+Benchmarks like AgentBench~\cite{liu2023agentbench}, ToolBench~\cite{qin2023toolllm}, API-Bank~\cite{li2023apibank}, and Gorilla~\cite{patil2023gorilla} evaluate agent \textit{capability}---can the agent solve the task? Schick et al.~\cite{schick2023toolformer} introduced Toolformer, showing LLMs can learn to use tools autonomously. We instead evaluate \textit{consistency}---does the agent solve it the same way each time?---an orthogonal and understudied dimension. Kapoor et al.~\cite{kapoor2024ai} surveyed common pitfalls in AI agent evaluations, noting that variance across runs is rarely reported; our work directly addresses this gap.
+
+%% ====================================================================
+\section{Methodology}
+%% ====================================================================
+
+\subsection{Task Design}
+
+We design 19 tasks across 5 categories of increasing ambiguity:
+
+\begin{itemize}[nosep]
+    \item \textbf{Data Retrieval} (4 tasks): Look up contacts, search emails, aggregate information. These tasks have clear, specific instructions with deterministic correct tool sequences.
+    \item \textbf{Scheduling} (4 tasks): Create events, find free slots, detect conflicts. These require temporal reasoning but have well-defined procedures.
+    \item \textbf{Computation} (3 tasks): Calculate inventory values, revenue projections. These require numeric tool calls with specific arguments.
+    \item \textbf{Multi-Tool Composition} (4 tasks): Tasks requiring 3--5 different tools in sequence, such as ``find an email, look up the sender, and schedule a meeting with them.''
+    \item \textbf{Ambiguous} (4 tasks): Intentionally underspecified requests (e.g., ``Help me prepare for my meetings tomorrow'') where multiple valid approaches exist.
+\end{itemize}
+
+Task difficulty is assigned based on expected tool-call complexity: easy (1--2 calls), medium (2--3), hard (3+). We empirically validate this assignment: hard tasks require significantly more tool calls (mean $= 3.0 \pm 2.4$) than easy tasks (mean $= 1.9 \pm 0.7$; Spearman $\rho = 0.26$, $p = 0.004$).
+
+\subsection{Tool Environment}
+
+We implement 10 simulated tool functions across 7 domains (contacts, calendar, email, products, weather, calculations, and notes). Crucially, all tools are \textbf{deterministic}: identical inputs always produce identical outputs. This ensures that any behavioral variance originates from the LLM, not the environment. Tool schemas follow the OpenAI function-calling format and are converted to provider-native formats (Anthropic tool use, Together AI OpenAI-compatible) at runtime.
+
+\subsection{Agent Framework}
+
+Each agent run follows a standard tool-calling loop:
+\begin{enumerate}[nosep]
+    \item The model receives a system prompt\footnote{The system prompt instructs the agent to use the provided tools to complete the user's request. The full prompt is included in our code release.} and the user task.
+    \item The model responds with tool calls (structured function calls with JSON arguments).
+    \item Tools execute deterministically and return results.
+    \item The model receives results and may call more tools or produce a final response.
+    \item The loop continues for up to 10 iterations.
+\end{enumerate}
+
+We use each provider's native tool-calling API. \textbf{Temperature is set to 1.0} (the default for most providers) to capture natural variance under standard deployment conditions. This is a deliberate choice: we measure consistency \textit{as deployed}, not under artificially constrained settings. We acknowledge that lower temperatures would yield higher consistency and discuss this trade-off in Section~\ref{sec:limitations}.
+
+\subsection{Models}
+
+We evaluate 6 models spanning 3 providers and multiple capability tiers:
+
+\begin{itemize}[nosep]
+    \item \textbf{OpenAI:} GPT-4o-mini, GPT-4o, GPT-4.1-mini, GPT-4.1
+    \item \textbf{Anthropic:} Claude Sonnet 4
+    \item \textbf{Meta (via Together AI):} Llama 3.3 70B Instruct Turbo
+\end{itemize}
+
+This selection covers flagship models (GPT-4.1, Sonnet 4), cost-optimized models (GPT-4o-mini, GPT-4.1-mini), and an open-source model (Llama 3.3). Each model runs each of the 19 tasks 10 times, yielding 1,140 agent traces.\footnote{We also collected partial results for o1 (7 of 19 tasks). As o1 uses constrained decoding with no temperature support, it is not directly comparable. We briefly discuss it in Section~\ref{sec:model_comparison} but exclude it from aggregate statistics.}
+
+\subsection{Consistency Metrics}
+
+For each task--model pair, we collect $N=10$ independent traces and compute:
+
+\begin{itemize}[nosep]
+    \item \textbf{Tool Sequence Similarity (TSS):} Mean pairwise normalized Levenshtein similarity over tool-name sequences. Ranges from 0 (completely different) to 1 (identical).
+    \item \textbf{Argument Consistency (AC):} Mean pairwise Jaccard similarity over flattened key-value pairs of tool arguments at each aligned step position.
+    \item \textbf{Unique Sequences:} Number of distinct tool-call sequences observed across $N$ runs.
+    \item \textbf{Divergence Point:} Mean step index at which traces first differ.
+    \item \textbf{Output Agreement:} Exact-match rate of final natural language responses.
+\end{itemize}
+
+\paragraph{Metric reliability.} To assess the stability of our metrics, we compute split-half reliability by partitioning the 10 runs into odd- and even-indexed subsets and computing TSS independently. The Pearson correlation between halves is $r = 0.66$ ($p < 10^{-16}$, $n = 125$), indicating moderate reliability given only 5 runs per half.
+
+\paragraph{Statistical reporting.} Throughout, we report means with 95\% confidence intervals (CI) computed via the $t$-distribution. For group comparisons, we report effect sizes (Cohen's $d$) and $p$-values. Cross-model comparisons use one-way ANOVA with $\eta^2$ effect sizes. We note two caveats: (1) the ANOVA treats task-model pairs as independent, though tasks are shared across models---a mixed-effects model would be more appropriate but we opt for the simpler analysis given our sample sizes; and (2) we report multiple hypothesis tests without family-wise correction, so individual $p$-values should be interpreted with this in mind. All key findings survive Bonferroni correction at $\alpha = 0.05/5 = 0.01$.
+
+%% ====================================================================
+\section{Results}
+%% ====================================================================
+
+\subsection{Structural Consistency with Parametric Variance}
+
+Our central finding is that tool-calling agents exhibit \textit{structural consistency with parametric variance}: agents reliably select the same tools in the same order (mean TSS $= 0.87$, 95\% CI $[0.84, 0.90]$), but vary significantly in the arguments they pass to those tools (mean AC $= 0.69$, 95\% CI $[0.64, 0.74]$). This gap is large and statistically significant (paired $t$-test: $t = 8.41$, $p < 10^{-13}$; Cohen's $d = 0.75$). The pattern persists across all models and task categories (Table~\ref{tab:model_comparison}, Figure~\ref{fig:model_comparison}).
+
+This pattern has a natural interpretation: models learn robust \textit{procedural knowledge}---the ``recipe'' for a task---but vary in \textit{instantiation details} such as specific search queries, date formats, or message phrasing.
+
+\begin{table}[t]
+\centering
+\caption{Cross-model consistency comparison (19 tasks, 10 runs each). TSS = Tool Sequence Similarity, AC = Argument Consistency. Reported as mean [95\% CI].}
+\label{tab:model_comparison}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Model & TSS [95\% CI] & AC [95\% CI] & Output & Uniq. \\
+ & & & Match & Seq. \\
+\midrule
+GPT-4.1-mini & $.92\ [.85, .99]$ & $.81\ [.70, .92]$ & 7.0\% & 1.6 \\
+GPT-4.1 & $.91\ [.84, .98]$ & $.69\ [.57, .82]$ & 1.9\% & 1.6 \\
+GPT-4o-mini & $.90\ [.84, .95]$ & $.66\ [.53, .78]$ & 4.1\% & 1.8 \\
+Claude Sonnet 4 & $.88\ [.79, .96]$ & $.76\ [.64, .88]$ & 4.7\% & 2.2 \\
+GPT-4o & $.87\ [.79, .96]$ & $.57\ [.41, .74]$ & 7.5\% & 1.6 \\
+Llama 3.3 70B & $.71\ [.61, .82]$ & $.65\ [.50, .79]$ & 1.4\% & 3.3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig4_model_comparison.pdf}
+    \caption{Model comparison across TSS and AC. Confidence intervals overlap substantially for AC, but Llama 3.3 70B is clearly separated in TSS.}
+    \label{fig:model_comparison}
+\end{figure}
+
+\subsection{Ambiguity Drives Inconsistency}
+
+Task category has a strong effect on consistency. Ambiguous tasks exhibit significantly lower argument consistency than structured tasks ($\text{AC}_\text{ambig} = 0.52$ vs.\ $\text{AC}_\text{structured} = 0.72$; Cohen's $d = 0.74$, $t = 3.34$, $p = 0.001$). Tool sequence similarity also drops significantly ($\text{TSS}_\text{ambig} = 0.79$ vs.\ $\text{TSS}_\text{structured} = 0.89$; Cohen's $d = 0.58$, $p = 0.010$). Category-level breakdowns are shown in Table~\ref{tab:category}.
+
+\begin{table}[t]
+\centering
+\caption{Consistency metrics by task category (averaged across 6 models). Note: with 3--4 tasks per category, these estimates have wide uncertainty; we report the ambiguous-vs.-structured contrast as the primary finding.}
+\label{tab:category}
+\small
+\begin{tabular}{lccc}
+\toprule
+Category & TSS & AC & Uniq.\ Seq. \\
+\midrule
+Scheduling & 0.91 & 0.77 & 1.6 \\
+Composition & 0.90 & 0.76 & 2.2 \\
+Retrieval & 0.89 & 0.65 & 1.9 \\
+Computation & 0.84 & 0.72 & 2.0 \\
+Ambiguous & 0.79 & 0.52 & 2.4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The practical implication is that \textbf{task specification quality is a stronger lever on consistency than model selection}. When multiple valid approaches exist (e.g., ``prepare for my meetings'' could mean checking the calendar, reviewing related emails, looking up attendees, or any combination), agents explore different strategies across runs.
+
+\begin{figure}[t]
+    \centering
+    \begin{subfigure}[b]{0.48\linewidth}
+        \includegraphics[width=\linewidth]{figures/fig1_consistency_by_category.pdf}
+        \caption{By task category.}
+        \label{fig:by_category}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\linewidth}
+        \includegraphics[width=\linewidth]{figures/fig2_consistency_by_difficulty.pdf}
+        \caption{By task difficulty.}
+        \label{fig:by_difficulty}
+    \end{subfigure}
+    \caption{Consistency by category and difficulty. Ambiguous tasks show the largest drop. Difficulty has a modest effect ($r = -0.18$, $p = 0.04$ for TSS).}
+    \label{fig:category_difficulty}
+\end{figure}
+
+\subsection{Early-Step Divergence}
+
+When behavioral divergence occurs, it happens early: 60\% of first-divergence events occur within the first two steps of the pipeline (mean divergence point $= 2.2$; Figure~\ref{fig:divergence}). This suggests a lightweight monitoring strategy: \textbf{comparing only the first 1--2 tool calls against a reference trace} can flag potentially inconsistent runs without monitoring the entire pipeline.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.75\linewidth]{figures/fig3_divergence_points.pdf}
+    \caption{Distribution of first divergence points. 60\% of behavioral variance originates in steps 1--2.}
+    \label{fig:divergence}
+\end{figure}
+
+\subsection{Output Text Never Matches}
+
+Final natural language responses exhibit near-zero exact-match rates ($<$5\% overall) even when tool-calling behavior is identical across runs. This is expected---natural language generation is inherently variable---but it underscores that \textbf{agent tests should assert on structured tool-calling behavior, not on natural language output}.
+
+\subsection{Consistency Predicts Correctness}
+\label{sec:correctness}
+
+A natural concern is whether consistency without correctness is meaningful---a model could be consistently wrong. To address this, we retroactively scored all 1,140 traces for task correctness using a three-component rubric: (1) \textit{required tool coverage}---did the agent invoke all necessary tools for the task? (2) \textit{argument validity}---do key arguments match expected patterns (e.g., correct contact name, valid date range)? (3) \textit{output completeness}---does the final response address the user's request? A trace is scored as correct if it satisfies all three components. Full criteria are included in our code release.
+
+\textbf{Overall correctness is high:} 77.1\% of traces are scored as correct across all task-model conditions. More importantly, \textbf{structural consistency is a significant predictor of correctness}: Pearson $r = 0.32$ ($p = 0.005$), Spearman $\rho = 0.42$ ($p < 0.001$). A median split on TSS reveals that high-consistency conditions ($\text{TSS} \geq 0.90$) achieve 90.2\% correctness versus 61.2\% for low-consistency conditions---a large and significant effect (Cohen's $d = 0.81$, $p < 0.001$; Figure~\ref{fig:correctness}).
+
+Crucially, \textbf{argument consistency does not correlate with correctness} ($r = 0.12$, $p = 0.31$). This reinforces our structural/parametric distinction: parametric variance (different search queries, date formats, phrasings) is largely \textit{benign}---it does not harm task success. Structural variance (different tool sequences) is where failures concentrate.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig10_correctness_vs_consistency.pdf}
+    \caption{Consistency vs.\ correctness. Left: TSS shows a significant positive correlation with task correctness ($r = 0.32$, $p = 0.005$). Right: AC shows no significant relationship ($r = 0.12$, $p = 0.31$), indicating that argument-level variance is largely benign.}
+    \label{fig:correctness}
+\end{figure}
+
+The practical implication is that \textbf{TSS can serve as a lightweight proxy for agent reliability}. Monitoring structural consistency---whether the agent follows the same procedure---is informative about whether it will succeed, even without evaluating the correctness of each output. This is actionable: production systems can flag runs where the tool sequence deviates from a reference trace.
+
+\subsection{Cross-Model Differences}
+\label{sec:model_comparison}
+
+Models differ significantly in structural consistency (one-way ANOVA on TSS: $F = 3.52$, $p = 0.003$, $\eta^2 = 0.15$). However, differences in argument consistency are not statistically significant at conventional thresholds ($F = 1.61$, $p = 0.15$, $\eta^2 = 0.08$), suggesting that AC variation is dominated by task-level factors rather than model choice.
+
+Key model-level observations:
+
+\begin{itemize}[nosep]
+    \item \textbf{GPT-4.1-mini} achieves the highest TSS ($0.92$) and AC ($0.81$), outperforming its predecessor GPT-4o-mini in AC ($+0.15$). However, their TSS confidence intervals overlap ($[0.85, 0.99]$ vs.\ $[0.84, 0.95]$), so we cannot claim a significant TSS improvement.
+    \item \textbf{Llama 3.3 70B} shows significantly lower TSS ($0.71$, $[0.61, 0.82]$) than all proprietary models, with $3.3$ unique sequences per task (vs.\ $1.6$--$2.2$). Post-hoc pairwise tests confirm this difference ($p < 0.05$ vs.\ all others).
+    \item \textbf{Claude Sonnet 4} achieves the second-highest AC ($0.76$) while exploring more unique sequences ($2.2$), suggesting it finds consistent strategies but varies in which strategy it selects.
+\end{itemize}
+
+Figure~\ref{fig:heatmap} shows the full model-by-category TSS matrix. The interaction is notable: Llama 3.3 70B's consistency drops most sharply on ambiguous ($\text{TSS} = 0.54$) and composition ($\text{TSS} = 0.63$) tasks, while proprietary models maintain $\text{TSS} > 0.80$ even on ambiguous tasks.
+
+\paragraph{Task completion as a correctness proxy.} While we do not evaluate semantic correctness, we report task completion rates (the fraction of runs that produce a final response without errors) as a basic proxy. GPT-4.1, GPT-4.1-mini, and Claude Sonnet 4 achieve $\geq$98.9\% completion, while GPT-4o achieves 97.4\% and Llama 3.3 70B achieves 98.9\%. This suggests that the consistency differences we observe are not driven by differential failure rates---all models (except the excluded o1 and Claude Haiku) reliably complete the tasks.
+
+\paragraph{Note on o1.} We collected partial results for OpenAI's o1 model (7 of 19 tasks). o1 uses internal chain-of-thought reasoning with constrained decoding, making direct comparison with standard chat models difficult. On the 7 completed tasks, o1 achieves TSS $= 0.89$ and AC $= 0.58$, suggesting good structural consistency but high parametric variance---potentially due to its deliberative reasoning process introducing more argument variation.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=\linewidth]{figures/fig7_model_category_heatmap.pdf}
+    \caption{TSS across models and task categories. Llama 3.3 shows notably lower consistency on ambiguous and composition tasks.}
+    \label{fig:heatmap}
+\end{figure}
+
+%% ====================================================================
+\section{Discussion}
+%% ====================================================================
+
+\subsection{Broader Context: Evaluation Reliability}
+
+This work is part of a broader investigation into the reliability of LLM evaluation. Companion studies examine the consistency of LLM-as-judge evaluators and the saturation dynamics of standard benchmarks. Together, these highlight a recurring theme: \textit{variance is pervasive and underreported across the LLM evaluation stack}---in agents executing tasks, in judges scoring them, and in the benchmarks used to compare them. Addressing reliability at each layer is necessary for trustworthy AI evaluation.
+
+\subsection{Implications for Agent Deployment}
+
+Our findings suggest several practical guidelines:
+
+\begin{enumerate}[nosep]
+    \item \textbf{Reduce ambiguity in task specifications.} The strongest lever on consistency is task clarity, not model choice (ambiguity effect: $d = 0.74$; model effect on AC: $\eta^2 = 0.08$, n.s.).
+    \item \textbf{Monitor early-step divergence.} Since 60\% of variance originates in steps 1--2, lightweight monitoring of initial tool calls can flag inconsistent runs.
+    \item \textbf{Test tool calls, not text output.} Assert on structured behavior (tool names, arguments), not natural language output.
+    \item \textbf{Consider model choice for consistency-critical tasks.} GPT-4.1-mini offers the best consistency, while Llama 3.3 70B shows significantly higher behavioral diversity.
+\end{enumerate}
+
+\subsection{Structural Consistency as a Reliability Signal}
+
+The ``structural consistency, parametric variance'' pattern ($d = 0.75$) suggests that LLMs learn robust procedural schemas for tool use. Our correctness analysis (Section~\ref{sec:correctness}) validates this interpretation: high-TSS conditions achieve 90.2\% correctness versus 61.2\% for low-TSS conditions ($d = 0.81$), while argument-level variance shows no significant correlation with correctness ($r = 0.12$, $p = 0.31$). This means that \textbf{parametric variance is largely benign}---agents may phrase a search query differently or format a date differently across runs, but this does not impair task success. TSS could therefore serve as a lightweight, correctness-free proxy for agent reliability: tasks with low TSS may benefit from additional guardrails or human review.
+
+\subsection{Comparison to Prior Work}
+
+Mehta et al.~\cite{mehta2026disagree} reported 2.0--4.2 unique action sequences per 10 runs on HotpotQA with ReAct agents. We observe 1.6--3.3 unique tool-call sequences, broadly consistent. However, our finer-grained analysis reveals that this headline number masks the structural/parametric distinction.
+
+\subsection{Limitations}
+\label{sec:limitations}
+
+\begin{itemize}[nosep]
+    \item \textbf{Sample size.} With $N = 10$ runs per task-model pair, our per-cell estimates have limited precision. While aggregate comparisons achieve significance (1,140 total traces), individual task-model confidence intervals are wide. Future work should use $N \geq 30$ for more precise estimates.
+    \item \textbf{Single temperature.} We measure at $T = 1.0$ only. The consistency-capability trade-off at different temperatures is an important direction for future work; we expect near-perfect consistency at $T = 0$ and increasing variance with temperature.
+    \item \textbf{No semantic correctness evaluation.} While we add a retroactive correctness analysis (Section~\ref{sec:correctness}) based on required tools and argument patterns, this is a proxy---not a full semantic evaluation. A more rigorous approach would use human judges or reference solutions. Nevertheless, the significant correlation between TSS and our correctness proxy ($\rho = 0.42$, $p < 0.001$) provides initial evidence that consistency is not vacuous.
+    \item \textbf{Limited tasks per category.} With 3--4 tasks per category, category-level estimates are imprecise. We report the binary ambiguous-vs.-structured contrast ($p = 0.001$) as our primary finding rather than fine-grained category comparisons.
+    \item \textbf{Single system prompt.} All runs use the same system prompt. Consistency may vary with different prompting strategies.
+    \item \textbf{Simulated tools.} Real APIs introduce non-determinism; our deterministic tools isolate LLM variance but may overestimate real-world consistency.
+    \item \textbf{Provider diversity.} The absence of Google Gemini models limits our provider coverage.
+\end{itemize}
+
+\subsection{Future Work}
+
+Several directions emerge: (1)~temperature ablation to map the consistency-capability frontier; (2)~human-judged correctness evaluation for richer semantic analysis; (3)~extending to multi-turn conversational agents; (4)~consistency-aware routing systems that direct tasks to models based on predicted consistency; (5)~larger benchmarks with $\geq$10 tasks per category; and (6)~studying how fine-tuning and RLHF affect consistency.
+
+%% ====================================================================
+\section{Conclusion}
+%% ====================================================================
+
+We present the first systematic study of behavioral consistency in multi-step tool-calling LLM agents. Evaluating 6 models across 19 tasks and 1,140 agent traces, we identify a ``structural consistency, parametric variance'' pattern: agents reliably select the same tools in the same order (TSS $= 0.87$) but vary in argument details (AC $= 0.69$), a gap that is both large ($d = 0.75$) and highly significant ($p < 10^{-13}$). Critically, structural consistency predicts task correctness ($d = 0.81$, $p < 0.001$), while argument-level variance is benign ($r = 0.12$, n.s.). Ambiguity is the dominant driver of inconsistency ($d = 0.74$), divergence concentrates early in the pipeline, and models differ significantly in structural but not argument consistency. These findings provide actionable guidance for building, testing, and monitoring reliable agent systems.
+
+\section*{Reproducibility}
+
+All code, task definitions, tool implementations, raw traces, and analysis scripts are available at \url{https://github.com/Abelo9996/agent-consistency}. The system prompt and full benchmark specification are included in the repository.
+
+\bibliographystyle{plain}
+\begin{thebibliography}{12}
+
+\bibitem{mehta2026disagree}
+Mehta, A., Ramesh, A., and Singla, A.
+\newblock When Agents Disagree With Themselves: Measuring Behavioral Consistency in LLM-Based Agents.
+\newblock \textit{arXiv preprint arXiv:2602.11619}, 2026.
+
+\bibitem{wang2023selfconsistency}
+Wang, X., Wei, J., Schuurmans, D., Le, Q., Chi, E., Narang, S., Chowdhery, A., and Zhou, D.
+\newblock Self-Consistency Improves Chain of Thought Reasoning in Language Models.
+\newblock In \textit{Proceedings of ICLR}, 2023.
+
+\bibitem{yao2023react}
+Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., and Cao, Y.
+\newblock ReAct: Synergizing Reasoning and Acting in Language Models.
+\newblock In \textit{Proceedings of ICLR}, 2023.
+
+\bibitem{sclar2024quantifying}
+Sclar, M., Choi, Y., Tsvetkov, Y., and Suhr, A.
+\newblock Quantifying Language Models' Sensitivity to Spurious Features in Prompt Design.
+\newblock \textit{arXiv preprint arXiv:2310.11324}, 2024.
+
+\bibitem{lu2022fantastically}
+Lu, Y., Bartolo, M., Moore, A., Riedel, S., and Stenetorp, P.
+\newblock Fantastically Ordered Prompts and Where to Find Them: Overcoming Few-Shot Prompt Order Sensitivity.
+\newblock In \textit{Proceedings of ACL}, 2022.
+
+\bibitem{liu2023agentbench}
+Liu, X., Yu, H., Zhang, H., et al.
+\newblock AgentBench: Evaluating LLMs as Agents.
+\newblock In \textit{Proceedings of ICLR}, 2024.
+
+\bibitem{qin2023toolllm}
+Qin, Y., Liang, S., Ye, Y., et al.
+\newblock ToolLLM: Facilitating Large Language Models to Master 16000+ Real-World APIs.
+\newblock In \textit{Proceedings of ICLR}, 2024.
+
+\bibitem{li2023apibank}
+Li, M., Zhao, Y., Yu, B., et al.
+\newblock API-Bank: A Comprehensive Benchmark for Tool-Augmented LLMs.
+\newblock In \textit{Proceedings of EMNLP}, 2023.
+
+\bibitem{schick2023toolformer}
+Schick, T., Dwivedi-Yu, J., Dess\`{i}, R., et al.
+\newblock Toolformer: Language Models Can Teach Themselves to Use Tools.
+\newblock In \textit{Proceedings of NeurIPS}, 2023.
+
+\bibitem{patil2023gorilla}
+Patil, S.~G., Zhang, T., Wang, X., and Gonzalez, J.~E.
+\newblock Gorilla: Large Language Model Connected with Massive APIs.
+\newblock \textit{arXiv preprint arXiv:2305.15334}, 2023.
+
+\bibitem{renze2024self}
+Renze, M. and Guven, E.
+\newblock Self-Reflection in LLM Agents: Effects on Problem-Solving Performance.
+\newblock \textit{arXiv preprint arXiv:2405.06682}, 2024.
+
+\bibitem{kapoor2024ai}
+Kapoor, S., Narayanan, A., et al.
+\newblock AI Agents That Matter.
+\newblock \textit{arXiv preprint arXiv:2407.01502}, 2024.
+
+\end{thebibliography}
+
+\end{document}

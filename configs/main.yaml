@@ -1,0 +1,36 @@
+# Main experiment configuration
+experiment:
+  name: "agent-consistency-v1"
+  description: "Measuring behavioral consistency in tool-calling LLM agents"
+
+# Phase 1: Single model, all tasks, 10 runs (cheap baseline)
+phase1:
+  models: ["gpt-4o-mini"]
+  runs_per_task: 10
+  tasks: "all"
+
+# Phase 2: Multi-model comparison, all tasks, 10 runs each
+phase2:
+  models:
+    - "gpt-4o-mini"       # already done
+    - "gpt-4o"            # already done
+    - "o1"                # already done
+    - "gpt-4.1"
+    - "gpt-4.1-mini"
+    - "claude-sonnet-4"
+    - "claude-haiku"
+    - "gemini-2.0-flash"
+    - "llama-3.3-70b"
+  runs_per_task: 10
+  tasks: "all"
+
+# Phase 3: Deep dive on interesting tasks, 30 runs
+phase3:
+  models: ["gpt-4.1", "claude-sonnet-4", "gemini-2.0-flash"]
+  runs_per_task: 30
+  tasks:
+    - "ambig-001"
+    - "ambig-002"
+    - "ambig-003"
+    - "compose-002"
+    - "compose-004"
