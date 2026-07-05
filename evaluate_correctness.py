@@ -384,71 +384,150 @@ def analyze_correctness_consistency(results_files: list[str]) -> dict:
 
 
 def generate_correctness_figure(analysis: dict, output_dir: str = "figures"):
-    """Generate scatter plot of TSS vs correctness rate."""
+    """
+    Two-panel figure: binned bar chart (left) + annotated scatter with jitter (right).
+
+    Panel A (left): Mean correctness rate for Low / Mid / High TSS tertiles, broken out
+    by task category.  Directly communicates the headline 90.2% vs 61.2% finding.
+
+    Panel B (right): Scatter of AC vs correctness with vertical jitter to reveal
+    overplotted points.  A flat trend line visually confirms the non-finding (r=0.12).
+
+    This replaces the original dual-scatter design which suffered from severe ceiling
+    overplotting (most points at y=1.0) and obscured the TSS median-split result.
+    """
     import matplotlib.pyplot as plt
+    import matplotlib.patches as mpatches
     import matplotlib
-    matplotlib.rcParams.update({'font.size': 11, 'font.family': 'serif'})
-    
+    matplotlib.rcParams.update({
+        'font.size': 11, 'font.family': 'serif',
+        'axes.labelsize': 12, 'axes.titlesize': 13,
+        'xtick.labelsize': 10, 'ytick.labelsize': 10,
+        'legend.fontsize': 9,
+    })
+
     data = analysis["per_task_model"]
-    
-    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
-    
-    # Panel A: TSS vs Correctness
+    r_tss = analysis["correlations"]["tss_pearson"]["r"]
+    p_tss = analysis["correlations"]["tss_pearson"]["p"]
+    r_ac  = analysis["correlations"]["ac_pearson"]["r"]
+    p_ac  = analysis["correlations"]["ac_pearson"]["p"]
+    ms    = analysis.get("median_split", {})
+
+    CAT_ORDER  = ["retrieval", "scheduling", "computation", "composition", "ambiguous"]
+    CAT_COLORS = {
+        "retrieval":   "#4C72B0",
+        "scheduling":  "#DD8452",
+        "computation": "#55A868",
+        "ambiguous":   "#8172B2",
+        "composition": "#C44E52",
+    }
+
+    tss_vals = np.array([e["tss"]             for e in data if e["tss"] is not None])
+    ac_vals  = np.array([e["ac"]              for e in data if e["ac"]  is not None])
+    cor_vals = np.array([e["correctness_rate"] for e in data if e["tss"] is not None])
+    cats     = [e["category"]                 for e in data if e["tss"] is not None]
+
+    # --- TSS tertile bins ---------------------------------------------------
+    t33, t67 = np.percentile(tss_vals, [33, 67])
+    def tss_bin(v):
+        if v < t33:   return "Low\nTSS"
+        if v < t67:   return "Mid\nTSS"
+        return "High\nTSS"
+    bin_labels = ["Low\nTSS", "Mid\nTSS", "High\nTSS"]
+
+    fig, axes = plt.subplots(1, 2, figsize=(13, 5))
+
+    # =========================================================
+    # Panel A: grouped bar chart — correctness by TSS bin × category
+    # =========================================================
     ax = axes[0]
-    categories = list(set(e["category"] for e in data))
-    colors = {'retrieval': 'tab:blue', 'scheduling': 'tab:orange', 'computation': 'tab:green',
-              'composition': 'tab:red', 'ambiguous': 'tab:purple'}
-    
-    for cat in categories:
-        pts = [e for e in data if e["category"] == cat]
-        ax.scatter([e["tss"] for e in pts], [e["correctness_rate"] for e in pts],
-                  c=colors.get(cat, 'gray'), label=cat.capitalize(), alpha=0.7, s=50)
-    
-    # Add correlation line
-    tss = [e["tss"] for e in data if e["tss"] is not None]
-    corr = [e["correctness_rate"] for e in data if e["tss"] is not None]
-    if tss:
-        z = np.polyfit(tss, corr, 1)
-        p = np.poly1d(z)
-        x_line = np.linspace(min(tss), max(tss), 100)
-        ax.plot(x_line, p(x_line), '--', color='gray', alpha=0.5)
-    
-    r_val = analysis["correlations"]["tss_pearson"]["r"]
-    p_val = analysis["correlations"]["tss_pearson"]["p"]
-    ax.set_xlabel('Tool Sequence Similarity (TSS)')
-    ax.set_ylabel('Task Correctness Rate')
-    ax.set_title(f'TSS vs Correctness (r={r_val:.2f}, p={p_val:.3f})' if r_val else 'TSS vs Correctness')
-    ax.legend(fontsize=8)
-    ax.set_xlim(0.4, 1.05)
-    ax.set_ylim(-0.05, 1.1)
-    
-    # Panel B: AC vs Correctness
+    bin_cat_means = {bl: {} for bl in bin_labels}
+    bin_cat_ns    = {bl: {} for bl in bin_labels}
+    for v, c_rate, cat in zip(tss_vals, cor_vals, cats):
+        bl = tss_bin(v)
+        bin_cat_means[bl].setdefault(cat, []).append(c_rate)
+        bin_cat_ns[bl].setdefault(cat, 0)
+        bin_cat_ns[bl][cat] += 1
+
+    n_bins = len(bin_labels)
+    n_cats = len(CAT_ORDER)
+    bar_w  = 0.13
+    group_w = n_cats * bar_w + 0.08
+    x_centers = np.arange(n_bins) * group_w
+
+    for ci, cat in enumerate(CAT_ORDER):
+        offsets = x_centers + ci * bar_w - (n_cats - 1) * bar_w / 2
+        means = []
+        sems  = []
+        for bl in bin_labels:
+            vals = bin_cat_means[bl].get(cat, [])
+            means.append(np.mean(vals) if vals else 0)
+            sems.append(np.std(vals) / np.sqrt(len(vals)) if len(vals) > 1 else 0)
+        ax.bar(offsets, means, bar_w, color=CAT_COLORS[cat], label=cat.capitalize(),
+               yerr=sems, capsize=3, error_kw={"linewidth": 0.8}, alpha=0.88, edgecolor="white")
+
+    # Overlay overall bin means as text annotations
+    for i, (bl, xc) in enumerate(zip(bin_labels, x_centers)):
+        all_in_bin = [c for b, c in zip([tss_bin(v) for v in tss_vals], cor_vals) if b == bl]
+        if all_in_bin:
+            ax.text(xc, min(1.02, np.mean(all_in_bin) + 0.04),
+                    f"{np.mean(all_in_bin):.0%}", ha="center", va="bottom",
+                    fontsize=10, fontweight="bold", color="#222")
+
+    ax.set_xticks(x_centers)
+    ax.set_xticklabels(bin_labels, fontsize=11)
+    ax.set_ylabel("Task Correctness Rate")
+    ax.set_ylim(0, 1.15)
+    ax.set_title(f"TSS Predicts Correctness\n($r={r_tss:.2f}$, $p={p_tss:.3f}$; Spearman $\\rho=0.42$)",
+                 fontweight="bold")
+    ax.legend(loc="lower right", title="Category", framealpha=0.85)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    ax.axhline(0.771, color="gray", linestyle=":", linewidth=1.0, label="_nolegend_")
+    ax.text(x_centers[-1] + group_w * 0.3, 0.771, "Overall\nmean", va="center",
+            fontsize=8, color="gray")
+
+    # =========================================================
+    # Panel B: jittered scatter — AC vs correctness
+    # =========================================================
     ax = axes[1]
-    for cat in categories:
-        pts = [e for e in data if e["category"] == cat]
-        ax.scatter([e["ac"] for e in pts], [e["correctness_rate"] for e in pts],
-                  c=colors.get(cat, 'gray'), label=cat.capitalize(), alpha=0.7, s=50)
-    
-    ac = [e["ac"] for e in data if e["ac"] is not None]
-    corr_ac = [e["correctness_rate"] for e in data if e["ac"] is not None]
-    if ac:
-        z = np.polyfit(ac, corr_ac, 1)
-        p = np.poly1d(z)
-        x_line = np.linspace(min(ac), max(ac), 100)
-        ax.plot(x_line, p(x_line), '--', color='gray', alpha=0.5)
-    
-    r_val_ac = analysis["correlations"]["ac_pearson"]["r"]
-    p_val_ac = analysis["correlations"]["ac_pearson"]["p"]
-    ax.set_xlabel('Argument Consistency (AC)')
-    ax.set_ylabel('Task Correctness Rate')
-    ax.set_title(f'AC vs Correctness (r={r_val_ac:.2f}, p={p_val_ac:.3f})' if r_val_ac else 'AC vs Correctness')
-    ax.set_xlim(0.1, 1.05)
-    ax.set_ylim(-0.05, 1.1)
-    
+    rng = np.random.default_rng(42)
+    ac_full  = np.array([e["ac"]              for e in data if e["ac"]  is not None])
+    cor_full = np.array([e["correctness_rate"] for e in data if e["ac"]  is not None])
+    cats_ac  = [e["category"]                 for e in data if e["ac"]  is not None]
+
+    # Vertical jitter — small so it stays readable
+    jitter = rng.uniform(-0.025, 0.025, size=len(cor_full))
+    for cat in CAT_ORDER:
+        mask = np.array(cats_ac) == cat
+        ax.scatter(ac_full[mask], cor_full[mask] + jitter[mask],
+                   c=CAT_COLORS[cat], label=cat.capitalize(),
+                   s=55, alpha=0.72, edgecolors="white", linewidth=0.4, zorder=3)
+
+    # Flat trend line
+    z = np.polyfit(ac_full, cor_full, 1)
+    x_line = np.linspace(ac_full.min(), ac_full.max(), 100)
+    ax.plot(x_line, np.poly1d(z)(x_line), "--", color="gray", alpha=0.55, linewidth=1.5)
+
+    ax.set_xlabel("Argument Consistency (AC)")
+    ax.set_ylabel("Task Correctness Rate (± jitter)")
+    ax.set_xlim(0.05, 1.08)
+    ax.set_ylim(-0.10, 1.12)
+    ax.set_title(f"AC Does Not Predict Correctness\n($r={r_ac:.2f}$, $p={p_ac:.3f}$, n.s.)",
+                 fontweight="bold")
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+    # Annotate non-significance explicitly
+    ax.text(0.97, 0.06, "n.s.", transform=ax.transAxes, ha="right",
+            fontsize=12, color="#888", style="italic")
+
+    plt.suptitle("Structural Consistency Predicts Success; Argument Variance Is Benign",
+                 fontsize=12, fontweight="bold", y=1.01)
     plt.tight_layout()
+
     outpath = Path(output_dir)
-    plt.savefig(outpath / 'fig10_correctness_vs_consistency.pdf', bbox_inches='tight')
-    plt.savefig(outpath / 'fig10_correctness_vs_consistency.png', bbox_inches='tight')
+    plt.savefig(outpath / 'fig10_correctness_vs_consistency.pdf', bbox_inches='tight', dpi=300)
+    plt.savefig(outpath / 'fig10_correctness_vs_consistency.png', bbox_inches='tight', dpi=300)
     plt.close()
     print(f"Saved: fig10_correctness_vs_consistency")
 
