@@ -1,5 +1,5 @@
 # Fdb version 4
-["pdflatex"] 1776959910.26362 "main.tex" "main.pdf" "main" 1776959910.80925 0
+["pdflatex"] 1783352612.1534 "main.tex" "main.pdf" "main" 1783352612.6583 0
   "/usr/local/texlive/2026basic/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc" 1254269338 2375 baa924870cfb487815765f9094cf3728 ""
   "/usr/local/texlive/2026basic/texmf-dist/fonts/enc/dvips/lm/lm-mathex.enc" 1202520719 3486 c7eadf5dcc57b3b2d11736679f6636ba ""
   "/usr/local/texlive/2026basic/texmf-dist/fonts/enc/dvips/lm/lm-mathit.enc" 1202520719 2405 5dcf2c1b967ee25cc46c58cd52244aed ""
@@ -181,15 +181,15 @@
   "/usr/local/texlive/2026basic/texmf-var/web2c/pdftex/pdflatex.fmt" 1772405612 2966183 588a2f29d0aaf280e3a142a37c2dd621 ""
   "/usr/local/texlive/2026basic/texmf.cnf" 1772405582 628 bbc09d6d38872d53c11bb48dc9b14e88 ""
   "figures/fig0_conceptual_example.pdf" 1776956042.87287 32798 59fe0fcd7aaeaabd495e201d5115a4ee ""
-  "figures/fig10_correctness_vs_consistency.pdf" 1776956043.94369 38633 c2f4a44b9468b43f3a27b703238d98ad ""
-  "figures/fig1_consistency_by_category.pdf" 1776956042.9908 16380 206a187ed15e08436620caf0df9071f9 ""
-  "figures/fig2_consistency_by_difficulty.pdf" 1776956043.1066 16391 44af335bca315d40adf0a4ee5e355d05 ""
-  "figures/fig3_divergence_points.pdf" 1776956043.2076 17538 fef28edf5d563a0edca584ad768dc15c ""
-  "figures/fig4_model_comparison.pdf" 1776956043.35947 28446 518bb73e32158223e7f7c3d763a82424 ""
-  "figures/fig7_model_category_heatmap.pdf" 1776956043.64516 39347 6d5c09dfff06e324009d99ed3aaba238 ""
-  "main.aux" 1776959910.69904 13974 0d270a2c059f636e5b9dedff4c986ba1 "pdflatex"
-  "main.out" 1776959910.6997 5789 f96dfa76bb519b0482b7216d0075e5e3 "pdflatex"
-  "main.tex" 1776959873.61602 48623 bd471f5ad87a3b761822a42c81b5ac94 ""
+  "figures/fig10_correctness_vs_consistency.pdf" 1783346774.46138 47391 10f00d58876d35db40feb85e580292b4 ""
+  "figures/fig1_consistency_by_category.pdf" 1783346774.46306 23411 c5ef0e24feebbe575423515315eaba4c ""
+  "figures/fig2_consistency_by_difficulty.pdf" 1783346774.46485 22403 a02d702c3bc538e2c2bc1c877cf93a90 ""
+  "figures/fig3_divergence_points.pdf" 1783346774.46642 22538 d1590a7b4e55a6dd91d1ca2bc70a8c26 ""
+  "figures/fig4_model_comparison.pdf" 1783346774.46805 23906 6ad6fa032a8a2cb7d791d42c95a938b2 ""
+  "figures/fig7_model_category_heatmap.pdf" 1783346774.47283 27197 38bc32365663a75a654cd8d2ff805d39 ""
+  "main.aux" 1783352612.54737 15348 b2bb18366811bb45ac13c6922a9864b1 "pdflatex"
+  "main.out" 1783352612.54816 5845 2a1660eb8dfc06646888bb4b848d3733 "pdflatex"
+  "main.tex" 1783352591.83059 59918 1447c49f577856b0a5c4f61d97baf923 ""
   (generated)
   "main.aux"
   "main.log"

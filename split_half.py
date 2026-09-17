@@ -6,21 +6,28 @@ results = []
 for f in sorted(glob("results/experiment_*.json")):
     results.extend(json.load(open(f)))
 
-from Levenshtein import distance as lev_dist
-
 def seq_sim(seqs):
+    """Token-level TSS over tool-name sequences, matching the paper's
+    Definition (src/metrics/consistency.py operates on trace objects; this
+    applies the same pairwise normalized-edit-distance to raw sequences).
+    An earlier version used character-level Levenshtein, a different metric."""
+    from itertools import combinations
+    seqs = [tuple(x) for x in seqs]
     if len(seqs) < 2:
         return 1.0
     sims = []
-    for i in range(len(seqs)):
-        for j in range(i+1, len(seqs)):
-            s1, s2 = " ".join(seqs[i]), " ".join(seqs[j])
-            maxlen = max(len(s1), len(s2))
-            if maxlen == 0:
-                sims.append(1.0)
-            else:
-                sims.append(1 - lev_dist(s1, s2) / maxlen)
-    return np.mean(sims)
+    for s1, s2 in combinations(seqs, 2):
+        m = max(len(s1), len(s2))
+        if m == 0:
+            sims.append(1.0); continue
+        # token-level edit distance (DP)
+        dp = list(range(len(s2) + 1))
+        for i, a in enumerate(s1, 1):
+            prev, dp[0] = dp[0], i
+            for j, b in enumerate(s2, 1):
+                prev, dp[j] = dp[j], min(dp[j] + 1, dp[j - 1] + 1, prev + (a != b))
+        sims.append(1 - dp[-1] / m)
+    return float(np.mean(sims))
 
 odd_vals, even_vals = [], []
 for r in results:

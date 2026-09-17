@@ -409,6 +409,7 @@ def generate_correctness_figure(analysis: dict, output_dir: str = "figures"):
     data = analysis["per_task_model"]
     r_tss = analysis["correlations"]["tss_pearson"]["r"]
     p_tss = analysis["correlations"]["tss_pearson"]["p"]
+    rho_tss = analysis["correlations"].get("tss_spearman", {}).get("rho", float("nan"))
     r_ac  = analysis["correlations"]["ac_pearson"]["r"]
     p_ac  = analysis["correlations"]["ac_pearson"]["p"]
     ms    = analysis.get("median_split", {})
@@ -478,7 +479,7 @@ def generate_correctness_figure(analysis: dict, output_dir: str = "figures"):
     ax.set_xticklabels(bin_labels, fontsize=11)
     ax.set_ylabel("Task Correctness Rate")
     ax.set_ylim(0, 1.15)
-    ax.set_title(f"TSS Predicts Correctness\n($r={r_tss:.2f}$, $p={p_tss:.3f}$; Spearman $\\rho=0.42$)",
+    ax.set_title(f"TSS vs. correctness\n($r={r_tss:.2f}$, $p={p_tss:.3f}$; Spearman $\\rho={rho_tss:.2f}$)",
                  fontweight="bold")
     ax.legend(loc="lower right", title="Category", framealpha=0.85)
     ax.spines["top"].set_visible(False)
@@ -521,7 +522,7 @@ def generate_correctness_figure(analysis: dict, output_dir: str = "figures"):
     ax.text(0.97, 0.06, "n.s.", transform=ax.transAxes, ha="right",
             fontsize=12, color="#888", style="italic")
 
-    plt.suptitle("Structural Consistency Predicts Success; Argument Variance Is Benign",
+    plt.suptitle("Correctness vs. consistency (fresh collection; associations weak)",
                  fontsize=12, fontweight="bold", y=1.01)
     plt.tight_layout()
 

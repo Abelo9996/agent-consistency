@@ -1,8 +1,12 @@
-"""
-regenerate_figures.py
-Recreates ALL publication-quality figures for the paper
-"How Consistent Are LLM Agents?" from hardcoded reported statistics.
-Run from /Users/abelyagubyan/Downloads/agent-consistency/
+"""DEPRECATED — DO NOT USE FOR THE PAPER.
+
+This script contains HARDCODED summary constants and, for fig10, an
+ILLUSTRATIVE SYNTHETIC data path (rng.normal). It must not be used to
+produce paper figures. Figure 10 is regenerated from the recovered REAL
+per-condition data by gen_fig10_real.py. The remaining figures' source
+data (raw traces) was not preserved; the constants below reflect the
+original analysis output but cannot be independently re-derived — see
+the Reproducibility statement in the paper.
 """
 
 import os

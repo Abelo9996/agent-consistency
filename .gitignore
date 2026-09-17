@@ -1,5 +1,8 @@
-results/
+results/*
+!results/experiment_20260705_205523.json
 .env
+REVIEWS.md
+.DS_Store
 __pycache__/
 *.pyc
 .venv/

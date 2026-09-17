@@ -1,10 +1,19 @@
-\documentclass[letterpaper]{article}
+% ===================================================================
+% REALM @ EMNLP 2026 workshop submission version.
+% ACL 2026 style, double-blind (anonymized), review format.
+% Main body (Introduction through Conclusion) fits within 8 pages;
+% references and appendices are unlimited.
+% ===================================================================
+\documentclass[11pt]{article}
+
+% ACL style with the review option (anonymized, line-numbered).
+\usepackage[review]{acl}
 
 % ---------------------------------------------------------------
-% Packages
+% Packages (matching what the original body needs)
 % ---------------------------------------------------------------
-\usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
 \usepackage{lmodern}
 \usepackage{microtype}
 \usepackage{amsmath,amssymb,amsthm}
@@ -15,13 +24,9 @@
 \usepackage{array}
 \usepackage{tabularx}
 \usepackage{longtable}
-\usepackage[margin=1in]{geometry}
+\usepackage{xcolor}
 \usepackage{enumitem}
 \setlist{nosep}
-\usepackage[colorlinks=true,linkcolor=blue!60!black,citecolor=blue!60!black,
-            urlcolor=blue!60!black]{hyperref}
-\usepackage{xcolor}
-\usepackage{natbib}
 \usepackage{mdframed}
 
 % ---------------------------------------------------------------
@@ -31,7 +36,7 @@
 \newtheorem{hypothesis}{Hypothesis}
 
 % ---------------------------------------------------------------
-% Convenience
+% Convenience macros
 % ---------------------------------------------------------------
 \newcommand{\passk}{pass\textasciicircum k}
 \newcommand{\tss}{\mathrm{TSS}}
@@ -43,16 +48,10 @@
   \end{mdframed}}
 
 % ---------------------------------------------------------------
-\title{\textbf{How Consistent Are LLM Agents?}\\[4pt]
-\large Measuring Behavioral Reproducibility in\\
-Multi-Step Tool-Calling Pipelines}
+\title{How Consistent Are LLM Agents? Measuring Behavioral
+Reproducibility in Multi-Step Tool-Calling Pipelines}
 
-\author{
-  Abel Yagubyan\\[2pt]
-  Independent Researcher\\
-  \texttt{abelyagubyan@berkeley.edu}
-}
-\date{April 2026}
+\author{Anonymous ACL submission}
 
 % ---------------------------------------------------------------
 \begin{document}
@@ -64,8 +63,8 @@ deployed in production systems, raising a fundamental reliability question:
 \emph{does the same agent behave the same way twice?} Prior work has
 established that repeated-trial success is unstable ($\tau$-bench's \passk);
 we characterize \emph{where} in the pipeline the instability lives.
-We present a systematic empirical study of \textbf{behavioral consistency in
-multi-step tool-calling agents}, measuring whether agents select the same tools,
+We present a systematic empirical study of behavioral consistency in
+multi-step tool-calling agents, measuring whether agents select the same tools,
 in the same order, with the same arguments, across repeated identical invocations.
 Unlike prior work on consistency in ReAct-style agents (search-only, free-text
 actions), we study the richer setting of \emph{structured tool-calling interfaces}
@@ -75,7 +74,7 @@ Using a benchmark of 19 tasks across five categories (data retrieval, scheduling
 computation, multi-tool composition, and ambiguous requests), we evaluate six
 models from three providers (OpenAI, Anthropic, Meta) across 1,140 agent traces,
 collected in July 2026 through a single provider-normalized API with
-version-pinned model identifiers, with \textbf{every raw trace released}. This
+version-pinned model identifiers, with every raw trace released. This
 paper's results are additionally a \textbf{replication}: an earlier (late-2025)
 collection with the same harness produced aggregates that our fresh collection
 reproduces almost exactly, and where the two collections disagree we say so
@@ -86,10 +85,10 @@ pattern}: agents reliably select the same tools in the same order (mean
 $\tss = 0.88$, 95\,\% CI $[0.85, 0.91]$) but vary substantially in the
 arguments they provide (mean $\ac = 0.70$, $[0.65, 0.75]$); the gap is large
 (Cohen's $d = 0.74$, $p \approx 10^{-12}$, with clustering caveats in
-Section~4.7) and \textbf{replicates across both collections to within one
-point}. Robust secondary findings: \textbf{62\,\% of behavioral divergence}
-originates in the first two pipeline steps, and \textbf{natural language
-outputs almost never match} (4\,\% exact) even when tool sequences are
+Section~\ref{sec:stats}) and \textbf{replicates across both collections to within one
+point}. Robust secondary findings: 62\,\% of behavioral divergence
+originates in the first two pipeline steps, and natural language
+outputs almost never match (4\,\% exact) even when tool sequences are
 identical. Two earlier secondary claims \emph{weakened} under replication and
 we report them at their replicated strength: ambiguous task specifications
 reduce argument consistency by 13\,\% (directionally consistent but not
@@ -106,7 +105,7 @@ observation about model progress that, to our knowledge, is new.
 
 We release all code, benchmark definitions, raw traces (1,140), per-condition
 data, and analysis scripts at
-\url{https://github.com/Abelo9996/agent-consistency}.
+\url{https://anonymous.4open.science/r/agent-consistency}.
 \end{abstract}
 
 %% ====================================================================
@@ -185,62 +184,24 @@ across diverse task types, making the following contributions:
 \section{Related Work}
 %% ====================================================================
 
-\paragraph{Behavioral consistency in LLM agents.}
-The closest prior work is $\tau$-bench~\citep{yao2024taubench}, which
-evaluates tool--agent--user interaction with the \passk{} metric (``all $k$
-attempts succeed'') and finds frontier agents highly inconsistent across
-trials, establishing that reliability-over-trials in structured
-tool-calling is a first-order problem. Our contribution relative to
-$\tau$-bench is a \emph{label-free decomposition}: \passk{} measures
-whether repeated attempts \emph{succeed}, which requires ground truth, while
-TSS/AC measure whether repeated attempts \emph{agree}, which does not, and
-our two-level split localizes the disagreement (structure vs.\ arguments).
-\citet{mehta2026disagree} measured consistency in ReAct agents on HotpotQA
-using search-only actions, finding inconsistency predicts failure; we extend
-to typed tool calls with diverse tool sets and task types.
-\citet{wang2023selfconsistency} showed that sampling multiple reasoning chains and
-marginalizing improves accuracy; this \emph{leverages} variance rather than
-characterizing its structure, and focuses on reasoning rather than tool calls.
-\citet{renze2024self} studied self-reflection in LLM agents and found mixed
-effects, suggesting that deliberate consistency-improving strategies do not
-uniformly help.
-
-\paragraph{LLM reliability and robustness.}
-A mechanistic strand explains \emph{why} identical requests yield different
-outputs even at temperature zero: batch-size-dependent reduction kernels and
-floating-point non-associativity in inference servers
-\citep{thinking2025nondeterminism,atil2024nondeterminism}. Our study
-deliberately measures the deployed reality at $T{=}1.0$ (sampling variance
-included); batch-invariant inference would remove part, but per the fixed-$T$
-decomposition, not all, of what we measure.
-\citet{sclar2024quantifying} quantified LLM sensitivity to prompt formatting,
-finding large swings from superficial changes.
-\citet{lu2022fantastically} demonstrated order sensitivity in few-shot prompts.
-\citet{perez2022true} showed that standard NLP evaluations underestimate
-robustness failures.
-Our focus is orthogonal: we hold the input fixed and measure variance across
-repeated identical invocations, the consistency a deployed system must have by
-definition.
-
-\paragraph{Agent capability evaluation.}
-AgentBench~\citep{liu2023agentbench}, ToolBench~\citep{qin2023toolllm},
-API-Bank~\citep{li2023apibank}, and Gorilla~\citep{patil2023gorilla} evaluate
-whether agents \emph{can} solve tasks.
-\citet{schick2023toolformer} showed LLMs can learn tool use from self-generated
-demonstrations.
-\citet{kapoor2024ai} surveyed pitfalls in AI agent evaluations, noting that
-variance across runs is rarely reported.
-We evaluate not whether agents succeed but whether they \emph{consistently} succeed
-in the same way, an orthogonal, understudied dimension.
-
-\paragraph{Reliability in ML systems.}
-The broader ML reliability literature addresses distribution shift,
-uncertainty quantification~\citep{lakshminarayanan2017simple}, and
-out-of-distribution detection, all concerned with performance under changed
-\emph{inputs}.
-We study consistency under repeated \emph{identical} inputs, a related but distinct
-concern that matters specifically for agentic systems where tasks are retried and
-behavioral reproducibility is a correctness criterion in its own right.
+The closest prior work is $\tau$-bench~\citep{yao2024taubench}, which evaluates
+tool--agent--user interaction with the \passk{} metric and finds frontier
+agents highly inconsistent across trials; our contribution relative to it is a
+\emph{label-free decomposition} (TSS/AC measure whether repeated attempts
+\emph{agree} rather than \emph{succeed}, localizing disagreement to structure
+vs.\ arguments). \citet{mehta2026disagree} measured consistency in ReAct agents
+on HotpotQA with search-only actions; we extend to typed tool calls with
+diverse tool sets and task types. Complementary strands study why identical
+requests diverge even at temperature zero
+\citep{thinking2025nondeterminism,atil2024nondeterminism}, prompt-formatting and
+order sensitivity \citep{sclar2024quantifying,lu2022fantastically,perez2022true},
+self-consistency and self-reflection
+\citep{wang2023selfconsistency,renze2024self}, agent capability benchmarks
+\citep{liu2023agentbench,qin2023toolllm,li2023apibank,patil2023gorilla,schick2023toolformer,kapoor2024ai},
+and ML reliability under changed inputs
+\citep{lakshminarayanan2017simple}. Our focus is orthogonal: we hold the input
+fixed and measure variance across repeated identical invocations. A fuller
+treatment of each strand is in Appendix~\ref{app:relwork}.
 
 %% ====================================================================
 \section{A Framework for Agent Behavioral Consistency}
@@ -402,7 +363,7 @@ native tool-calling API.
 \textbf{Temperature is set to 1.0} (the default for most providers). This is a
 deliberate choice: we measure consistency \emph{as deployed}, not under
 artificially constrained settings. Temperature ablation is a known limitation and
-an important direction for future work (Section~\ref{sec:limitations}).
+an important direction for future work (see Limitations).
 
 \subsection{Models}
 \label{sec:models}
@@ -448,25 +409,20 @@ A trace is scored correct iff all applicable criteria are satisfied. Full per-ta
 criteria are in Appendix~\ref{app:correctness} and the code release.
 
 \subsection{Statistical Analysis}
+\label{sec:stats}
 
 We report means with 95\,\% CIs via the $t$-distribution, Cohen's $d$ for effect
-sizes, and $p$-values from paired or independent $t$-tests as appropriate.
-Cross-model comparisons use one-way ANOVA with $\eta^2$. A statistical caveat
-we state plainly: the same 19 tasks recur across all six models, so
-observations are \emph{clustered}, and for clustered data ordinary
-$t$-tests/ANOVA are typically \emph{anti}-conservative, an earlier version
-of this paper mischaracterized them as conservative. Headline $p$-values
-(e.g.\ $p < 10^{-13}$ for the TSS--AC gap) should therefore be read as
-overstated in precision; the effect sizes ($d = 0.75$), which do not depend on
-the independence assumption in the same way, are the robust quantity, and a
-linear mixed-effects re-analysis (tasks and models as random effects) is
-required before the $p$-values are taken at face value. We test five primary
-hypotheses with Bonferroni correction at $\alpha = 0.01$; category-level and
-post-hoc pairwise contrasts beyond these five are exploratory and are not
-corrected. Split-half reliability (TSS: $r = 0.66$, $n = 125$; computed with a
-character-level variant of TSS that predates the unified token-level
-definition, another defect the re-collection will repair) suggests moderate
-metric stability at $N = 10$.
+sizes, and $p$-values from paired or independent $t$-tests as appropriate;
+cross-model comparisons use one-way ANOVA with $\eta^2$. A caveat we state
+plainly: the same 19 tasks recur across all six models, so observations are
+\emph{clustered}, and for clustered data ordinary $t$-tests/ANOVA are typically
+\emph{anti}-conservative (an earlier version of this paper mischaracterized
+them as conservative). Headline $p$-values (e.g.\ $p < 10^{-13}$ for the
+TSS--AC gap) should therefore be read as overstated in precision; the effect
+sizes ($d = 0.75$) are the robust quantity, and a linear mixed-effects
+re-analysis is required before the $p$-values are taken at face value. Further
+detail (Bonferroni correction over five primary hypotheses, split-half
+reliability) is in Appendix~\ref{app:extdisc}.
 
 %% ====================================================================
 \section{Results}
@@ -480,7 +436,7 @@ collection, agents exhibit \emph{structural consistency with parametric
 variance}: mean $\tss = 0.88$, 95\,\% CI $[0.85, 0.91]$, versus mean
 $\ac = 0.70$, $[0.65, 0.75]$ (paired $t$-test: $t = 7.88$,
 $p = 2.3\times10^{-12}$; Cohen's $d = 0.74$; clustering caveat in
-Section~4.7). The earlier (late-2025) collection produced
+Section~\ref{sec:stats}). The earlier (late-2025) collection produced
 $\tss = 0.87\,[0.84, 0.90]$ and $\ac = 0.69\,[0.64, 0.74]$ with $d = 0.75$,
 \textbf{the headline pattern replicates across collections eight months
 apart, on updated model versions, to within one point on every quantity}. The
@@ -500,9 +456,10 @@ parentheses where they differ by $\geq.02$, most models became \emph{more}
 consistent across generations.}
 \label{tab:model_comparison}
 \small
+\setlength{\tabcolsep}{4pt}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
-Model & TSS [95\,\% CI] & AC [95\,\% CI] & Output Match & Uniq.\ Seq. \\
+Model & TSS [95\,\% CI] & AC [95\,\% CI] & Out. & Uniq. \\
 \midrule
 GPT-4.1          & $.95\ [.90, 1.0]$ (.91) & $.79\ [.67, .91]$ (.69) & 2.1\,\% & 1.3 \\
 GPT-4.1-mini     & $.90\ [.83, .97]$ & $.78\ [.67, .90]$ & 6.4\,\% & 1.6 \\
@@ -538,28 +495,8 @@ now ask a clarifying question rather than guessing, itself a behavior
 change worth noting). We therefore \emph{demote} our earlier claim: ambiguity
 remains a directionally consistent driver of argument variance across both
 collections, but on current models we can no longer claim it dominates model
-selection.
-
-\begin{table}[t]
-\centering
-\caption{Consistency by task category (fresh collection, mean across 6 models).
-With 3--4 tasks per category, all category-level contrasts are exploratory; the
-ambiguous-vs.-structured AC contrast is directional but not significant on
-this collection ($p = 0.16$).}
-\label{tab:category}
-\small
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-Category & TSS & AC & Uniq.\ Seq. & \#Tasks \\
-\midrule
-Composition  & 0.94 & 0.74 & 1.5 & 4 \\
-Retrieval    & 0.89 & 0.66 & 1.8 & 4 \\
-Scheduling   & 0.86 & 0.76 & 1.8 & 4 \\
-Computation  & 0.84 & 0.71 & 2.3 & 3 \\
-Ambiguous    & 0.84 & 0.63 & 2.5 & 4 \\
-\bottomrule
-\end{tabular}
-\end{table}
+selection. Per-category consistency numbers are in Table~\ref{tab:category}
+(Appendix~\ref{app:extra}) and Figure~\ref{fig:category_difficulty}.
 
 \finding{\textbf{Finding 2 (revised under replication).} Ambiguity reduces
 argument consistency directionally in both collections, but the effect is no
@@ -568,27 +505,6 @@ $p = 0.001$ in late 2025). Reducing ambiguity remains sensible engineering
 hygiene; the strong ``stronger than model selection'' version of this claim
 did not survive replication.}
 
-\begin{figure}[t]
-  \centering
-  \begin{subfigure}[b]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{figures/fig1_consistency_by_category.pdf}
-    \caption{By task category.}
-    \label{fig:by_category}
-  \end{subfigure}
-  \hfill
-  \begin{subfigure}[b]{0.48\linewidth}
-    \includegraphics[width=\linewidth]{figures/fig2_consistency_by_difficulty.pdf}
-    \caption{By task difficulty.}
-    \label{fig:by_difficulty}
-  \end{subfigure}
-  \caption{Ambiguous tasks show the largest (directional) consistency drop;
-    on the fresh collection, task difficulty shows \emph{no} significant
-    effect on either metric ($\tss$: $r = -0.04$, $p = 0.67$; $\ac$:
-    $r = -0.15$, $p = 0.12$), the earlier collection's modest difficulty
-    effect did not replicate.}
-  \label{fig:category_difficulty}
-\end{figure}
-
 \subsection{Divergence Concentrates in Early Steps}
 \label{sec:divergence}
 
@@ -596,16 +512,8 @@ When behavioral divergence occurs, it is early: 60\,\% of first-divergence event
 occur within the first two pipeline steps (mean divergence point $= 2.2$;
 Figure~\ref{fig:divergence}). This yields a practical monitoring strategy:
 \textbf{comparing only the first 1--2 tool calls against a reference trace} catches
-the majority of behavioral variance without full trace inspection.
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=0.70\linewidth]{figures/fig3_divergence_points.pdf}
-  \caption{Distribution of first divergence points (fresh collection). 62\,\% of
-    divergence originates in steps 1--2 (61\,\% in the earlier collection),
-    enabling lightweight early-step monitoring.}
-  \label{fig:divergence}
-\end{figure}
+the majority of behavioral variance without full trace inspection
+(Figure~\ref{fig:divergence}, Appendix~\ref{app:extra}).
 
 \finding{\textbf{Finding 3 (replicated).} A monitor that checks only the first two
 tool calls against a reference trace captures 62\,\% of all behavioral
@@ -665,19 +573,8 @@ $n \approx 100$ conditions power is limited for small effects.
 Agents may phrase search queries differently, format dates differently, or
 vary message bodies across runs, none of this impairs rubric success. It is
 \emph{structural} variance, selecting different or missing tools, where
-failures concentrate.
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig10_correctness_vs_consistency.pdf}
-  \caption{Correctness rate versus consistency on the fresh collection (114
-    conditions, 1{,}140 traces, same sample as all consistency results).
-    \textbf{Left:} correctness vs.\ $\tss$ ($r = 0.06$, n.s.; Spearman
-    $\rho = 0.22$, $p = 0.017$). \textbf{Right:} correctness vs.\ $\ac$
-    ($r = -0.17$, $p = 0.07$). The strong association reported for the
-    late-2025 snapshot did not replicate on current models.}
-  \label{fig:correctness}
-\end{figure}
+failures concentrate. Figure~\ref{fig:correctness}
+(Appendix~\ref{app:extra}) plots correctness against both metrics.
 
 \finding{\textbf{Finding 4 (revised under replication).} The
 $\tss$--correctness association is generation-dependent: strong on late-2025
@@ -707,7 +604,8 @@ Sonnet~4} pairs high $\ac$ (0.77) with more strategy exploration (2.3 unique
 sequences), suggesting it reliably parameterizes strategies but varies in
 which strategy it selects.
 
-The Model $\times$ Category interaction (Figure~\ref{fig:heatmap}) is notable,
+The Model $\times$ Category interaction (Figure~\ref{fig:heatmap},
+Appendix~\ref{app:extra}) is notable,
 and it changed between collections: on the fresh data Llama~3.3~70B's weakest
 cell is \emph{computation} ($\tss = 0.61$) rather than ambiguity, and two
 proprietary models now dip below $0.80$ on ambiguous tasks (GPT-4o $0.71$,
@@ -715,16 +613,6 @@ Claude Sonnet~4 $0.74$) while GPT-4.1 is perfectly consistent there
 ($\tss = 1.0$). The instability of these cell-level patterns across
 collections, with only $3$--$4$ tasks per cell, is itself the lesson: we
 read the heatmap as descriptive, not as stable model fingerprints.
-
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\linewidth]{figures/fig7_model_category_heatmap.pdf}
-  \caption{$\tss$ across models and task categories (fresh collection).
-    Llama~3.3~70B is lowest overall with a computation-category weak spot;
-    cell-level patterns shifted between collections and should be read as
-    descriptive.}
-  \label{fig:heatmap}
-\end{figure}
 
 %% ====================================================================
 \section{Discussion}
@@ -795,67 +683,6 @@ evaluation, which is often expensive or infeasible online.
     sequences/task) and may require additional guardrails.
 \end{enumerate}
 
-\subsection{Relation to Prior Work}
-
-\citet{mehta2026disagree} reported 2.0--4.2 unique action sequences per 10 runs
-on HotpotQA ReAct agents; we observe 1.6--3.3 unique tool-call sequences, broadly
-consistent. Our finer-grained analysis reveals that the unique-sequence count masks
-the structural/parametric distinction: even conditions with $>$2 unique sequences
-often share high $\tss$ because sequences agree on most tool names with only minor
-reordering. Prior consistency studies also did not examine the connection to
-correctness; our two-collection analysis grounds the metric in task outcomes
-and, importantly, shows the connection itself is generation-dependent
-(strong at late-2025, weak by mid-2026).
-
-\subsection{Limitations}
-\label{sec:limitations}
-
-\begin{itemize}[leftmargin=1.5em]
-  \item \textbf{Sample size.} $N = 10$ runs per cell yields split-half
-    reliability $r = 0.68$ on the fresh collection (token-level TSS, $n = 114$
-    conditions; the earlier collection's $r = 0.66$ used a character-level
-    variant). Aggregate results are well-powered (1,140 traces), but per-cell
-    CIs are wide. Future work should use $N \geq 30$.
-  \item \textbf{Single temperature.} We measure at $T = 1.0$ only. The
-    consistency-capability trade-off at other temperatures is important and
-    uncharted; a $T = 0$ baseline would substantially strengthen the causal
-    interpretation.
-  \item \textbf{Structured correctness proxy.} Our rubric is not a full
-    semantic evaluation, and it shares a construction-level dependence on tool
-    selection with $\tss$ (Section~\ref{sec:correctness}). Human judges on a
-    random 200-trace subset would provide stronger validity; the fresh
-    collection's weak rank correlation ($\rho = 0.22$, $p = 0.017$) is the
-    honest current support.
-  \item \textbf{Limited tasks per category.} 3--4 tasks per category makes
-    category-level estimates imprecise. $\geq$10 tasks per category are needed for
-    reliable inference.
-  \item \textbf{Single system prompt.} Consistency may vary substantially with
-    chain-of-thought prompting, few-shot examples, or persona instructions.
-  \item \textbf{Simulated tools.} Deterministic tools isolate LLM variance but may
-    overestimate real-world consistency where tool outputs themselves vary.
-  \item \textbf{Provider coverage.} Google Gemini and Mistral are absent, limiting
-    generalizability.
-  \item \textbf{AC alignment.} AC aligns arguments by step index, conflating
-    structural and argument divergence at misaligned steps. A disentangled metric
-    would be more informative.
-\end{itemize}
-
-\subsection{Future Directions}
-
-\begin{enumerate}[leftmargin=1.5em]
-  \item \textbf{Temperature ablation:} map the full consistency-capability
-    Pareto frontier.
-  \item \textbf{Larger benchmark:} $\geq$10 tasks per category, $\geq$50 total.
-  \item \textbf{Human correctness evaluation:} human judges on 200 traces.
-  \item \textbf{Consistency-aware routing:} route tasks to models based on
-    predicted $\tss$.
-  \item \textbf{Multi-turn and long-horizon agents:} web agents, coding agents.
-  \item \textbf{Fine-tuning effects:} does RLHF explicitly optimize
-    consistency?
-  \item \textbf{Real API tools:} study whether environmental non-determinism
-    amplifies or dampens LLM behavioral variance.
-\end{enumerate}
-
 %% ====================================================================
 \section{Conclusion}
 %% ====================================================================
@@ -883,22 +710,36 @@ variation. Understanding and exploiting this structure, testing on tool calls no
 text, monitoring early steps, flagging low-$\tss$ runs, is a practical path
 toward more reliable agentic systems.
 
-% Acknowledgements omitted for the arXiv preprint.
+%% ====================================================================
+%% ACL/ARR requires Limitations as an unnumbered top-level section placed after
+%% the Conclusion and before the references. It does NOT count against the page
+%% limit, which is also why it is no longer a subsection of the Discussion.
+%% ====================================================================
+\section*{Limitations}
+
+We summarize the main limitations here and give the full list, together with an
+extended relation-to-prior-work discussion and future directions, in
+Appendix~\ref{app:extdisc}. The most important caveats are: $N = 10$ runs per
+cell (split-half reliability $r = 0.68$ on the fresh collection; aggregate
+results are well-powered at 1,140 traces but per-cell CIs are wide); a single
+temperature ($T = 1.0$); a structured correctness rubric that shares a
+construction-level dependence on tool selection with $\tss$
+(Section~\ref{sec:correctness}); only 3--4 tasks per category; a single system
+prompt; deterministic simulated tools; and no Google Gemini or Mistral
+coverage.
 
 \section*{Reproducibility}
 All code, benchmark definitions, tool implementations, analysis scripts,
 \textbf{and the complete raw traces of the primary (July 2026) collection,
 1{,}140 traces across 114 task--model conditions, collected through a
 provider-normalizing API with version-pinned model identifiers}, are
-available at \url{https://github.com/Abelo9996/agent-consistency}, together
-with the earlier snapshot's per-condition data (75 conditions). For the
-record, and because an earlier version of this paper mishandled these points:
-the original late-2025 collection's raw traces were not preserved and its
-models were not version-pinned, and its correctness analysis used a mismatched
-sample without disclosure. The present version's primary results are computed
-end-to-end from the released fresh traces; the earlier collection appears only
-as summary-level comparison, labeled as such. The full system prompt, task
-list, and per-task correctness criteria are in
+available at \url{https://anonymous.4open.science/r/agent-consistency}, together
+with the earlier snapshot's per-condition data (75 conditions). The present
+version's primary results are computed end-to-end from the released fresh
+traces; the earlier collection appears only as summary-level comparison,
+labeled as such (see Appendix~\ref{app:extdisc} for a note on how an earlier
+version of this paper mishandled the earlier collection's provenance). The full
+system prompt, task list, and per-task correctness criteria are in
 Appendices~\ref{app:tasks}--\ref{app:correctness}.
 
 %% ====================================================================
@@ -1011,33 +852,21 @@ Yao, S., Zhao, J., Yu, D., et~al.
 \appendix
 %% ====================================================================
 
-\clearpage
-\section*{Appendix A. Full Task Benchmark}
-\addcontentsline{toc}{section}{Appendix A. Full Task Benchmark}
+\section{Full Task Benchmark}
 \label{app:tasks}
 
 Table~\ref{tab:full_tasks} lists all 19 benchmark tasks used in the study.
 Difficulty is reported as E (easy: 1--2 calls), M (medium: 2--3 calls), and H
 (hard: 3+ calls). Expected tools denote the minimal correct solution pattern.
 
+\begin{table*}[t]
+\centering
 \small
-\setlength{\LTleft}{0pt}
-\setlength{\LTright}{0pt}
-\begin{longtable}{@{}llp{0.45\textwidth}p{0.24\textwidth}@{}}
-\caption{All 19 benchmark tasks used in the evaluation.}\label{tab:full_tasks}\\
+\caption{All 19 benchmark tasks used in the evaluation.}\label{tab:full_tasks}
+\begin{tabularx}{\textwidth}{@{}llXX@{}}
 \toprule
 ID & Diff. & Task Instruction & Expected Tools \\
 \midrule
-\endfirsthead
-\toprule
-ID & Diff. & Task Instruction & Expected Tools \\
-\midrule
-\endhead
-\midrule
-\multicolumn{4}{r}{\textit{Continued on next page}} \\
-\endfoot
-\bottomrule
-\endlastfoot
 \multicolumn{4}{@{}l}{\textit{Data Retrieval}} \\
 retrieve-001 & E & Find Alice's email and send ``Meeting moved to 3pm tomorrow.'' & get\_contact, send\_email \\
 retrieve-002 & M & Find all contacts at StartupXYZ; invite each to demo March~10 at 2pm. & search\_contacts, send\_email \\
@@ -1066,34 +895,25 @@ ambig-001 & M & Help me prepare for my meetings tomorrow. & list\_calendar\_even
 ambig-002 & H & I need to follow up on important things from this week. & search\_emails, list\_calendar\_events \\
 ambig-003 & H & Get me ready for the investor call. & search\_emails, list\_calendar\_events, search\_contacts \\
 ambig-004 & H & What should I focus on this week? & list\_calendar\_events, search\_emails \\
-\end{longtable}
-\normalsize
+\bottomrule
+\end{tabularx}
+\end{table*}
 
-\clearpage
-\section*{Appendix B. Tool Descriptions}
-\addcontentsline{toc}{section}{Appendix B. Tool Descriptions}
+\section{Tool Descriptions}
 \label{app:tools}
 
 Table~\ref{tab:tools} summarizes the 10 deterministic simulated tools used in
 our environment. Each tool returns fixed, pre-specified outputs for a given
 input, isolating model behavior from environmental nondeterminism.
 
+\begin{table*}[t]
+\centering
 \small
-\begin{longtable}{@{}llp{0.52\textwidth}@{}}
-\caption{Deterministic simulated tools used in the benchmark.}\label{tab:tools}\\
+\caption{Deterministic simulated tools used in the benchmark.}\label{tab:tools}
+\begin{tabularx}{\textwidth}{@{}llX@{}}
 \toprule
 Tool & Domain & Description \\
 \midrule
-\endfirsthead
-\toprule
-Tool & Domain & Description \\
-\midrule
-\endhead
-\midrule
-\multicolumn{3}{r}{\textit{Continued on next page}} \\
-\endfoot
-\bottomrule
-\endlastfoot
 \texttt{get\_contact}            & Contacts & Look up a contact by name; returns email, phone, and company. \\
 \texttt{search\_contacts}        & Contacts & Search contacts by free-text query; returns a matching list. \\
 \texttt{send\_email}             & Email    & Send an email with fields such as recipient, subject, and body; returns a confirmation. \\
@@ -1104,12 +924,11 @@ Tool & Domain & Description \\
 \texttt{calculate}               & Math     & Evaluate a mathematical expression and return the numeric result. \\
 \texttt{get\_weather}            & Weather  & Return current weather for a city, including temperature and conditions. \\
 \texttt{create\_note}            & Notes    & Create a text note with title and body; returns a confirmation. \\
-\end{longtable}
-\normalsize
+\bottomrule
+\end{tabularx}
+\end{table*}
 
-\clearpage
-\section*{Appendix C. System Prompt}
-\addcontentsline{toc}{section}{Appendix C. System Prompt}
+\section{System Prompt}
 \label{app:system_prompt}
 
 The following system prompt (quoted verbatim from the released
@@ -1129,13 +948,11 @@ Rules:\\
 This prompt is intentionally minimal so as not to anchor models to a
 particular tool-selection strategy. We note one relevant line explicitly: the
 instruction to ``make reasonable assumptions and proceed'' on ambiguous tasks
-interacts with our ambiguity findings (Section~5.2), it licenses divergent
+interacts with our ambiguity findings (Section~\ref{sec:ambiguity}), it licenses divergent
 assumption-making, and a stricter prompt might reduce (or merely mask) the
 ambiguity-driven variance we measure.
 
-\clearpage
-\section*{Appendix D. Correctness Criteria (Illustrative Subset)}
-\addcontentsline{toc}{section}{Appendix D. Correctness Criteria (Illustrative Subset)}
+\section{Correctness Criteria (Illustrative Subset)}
 \label{app:correctness}
 
 Table~\ref{tab:correctness_criteria} provides illustrative examples of the
@@ -1143,28 +960,255 @@ correctness rubric used to score traces. To keep the paper concise, we include a
 representative subset here; the full task-by-task specification is released in
 the accompanying code repository.
 
+\begin{table*}[t]
+\centering
 \small
-\begin{longtable}{@{}lp{0.28\textwidth}p{0.42\textwidth}@{}}
-\caption{Illustrative correctness criteria for representative tasks.}\label{tab:correctness_criteria}\\
+\caption{Illustrative correctness criteria for representative tasks.}\label{tab:correctness_criteria}
+\begin{tabularx}{\textwidth}{@{}lXX@{}}
 \toprule
 Task ID & Required Tools & Key Argument Checks \\
 \midrule
-\endfirsthead
-\toprule
-Task ID & Required Tools & Key Argument Checks \\
-\midrule
-\endhead
-\midrule
-\multicolumn{3}{r}{\textit{Continued on next page}} \\
-\endfoot
-\bottomrule
-\endlastfoot
 retrieve-001 & get\_contact, send\_email & \texttt{get\_contact.name}$\sim$\texttt{/alice/i}; \texttt{send\_email.to}=\texttt{alice@...}; body$\sim$\texttt{/3\,pm/i} \\
 schedule-001 & create\_calendar\_event & title$\sim$\texttt{/design review/i}; date=\texttt{2026-03-02}; start\_time=\texttt{14:00} \\
 compute-001 & search\_products, calculate & \texttt{search\_products.category}$\sim$\texttt{/electronics/i}; output contains numeric result \\
 compose-001 & search\_emails, get\_contact, create\_calendar\_event & Required sequence: search $\to$ lookup $\to$ create \\
 ambig-001 & list\_calendar\_events & Any invocation accepted; multiple valid strategies are treated as correct. \\
-\end{longtable}
-\normalsize
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\section{Additional Results}
+\label{app:extra}
+
+This appendix collects the per-category breakdowns and the extra cross-model
+analyses referenced in Section~\ref{sec:ambiguity},
+Section~\ref{sec:correctness}, and Section~\ref{sec:model_comparison}. They are
+relocated here to keep the main body within the page limit; no numbers differ
+from those reported in the body.
+
+\begin{table}[t]
+\centering
+\caption{Consistency by task category (fresh collection, mean across 6 models).
+With 3--4 tasks per category, all category-level contrasts are exploratory; the
+ambiguous-vs.-structured AC contrast is directional but not significant on
+this collection ($p = 0.16$).}
+\label{tab:category}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Category & TSS & AC & Uniq.\ Seq. & \#Tasks \\
+\midrule
+Composition  & 0.94 & 0.74 & 1.5 & 4 \\
+Retrieval    & 0.89 & 0.66 & 1.8 & 4 \\
+Scheduling   & 0.86 & 0.76 & 1.8 & 4 \\
+Computation  & 0.84 & 0.71 & 2.3 & 3 \\
+Ambiguous    & 0.84 & 0.63 & 2.5 & 4 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[t]
+  \centering
+  \begin{subfigure}[b]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{figures/fig1_consistency_by_category.pdf}
+    \caption{By task category.}
+    \label{fig:by_category}
+  \end{subfigure}
+  \hfill
+  \begin{subfigure}[b]{0.48\linewidth}
+    \includegraphics[width=\linewidth]{figures/fig2_consistency_by_difficulty.pdf}
+    \caption{By task difficulty.}
+    \label{fig:by_difficulty}
+  \end{subfigure}
+  \caption{Ambiguous tasks show the largest (directional) consistency drop;
+    on the fresh collection, task difficulty shows \emph{no} significant
+    effect on either metric ($\tss$: $r = -0.04$, $p = 0.67$; $\ac$:
+    $r = -0.15$, $p = 0.12$), the earlier collection's modest difficulty
+    effect did not replicate.}
+  \label{fig:category_difficulty}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.70\linewidth]{figures/fig3_divergence_points.pdf}
+  \caption{Distribution of first divergence points (fresh collection). 62\,\% of
+    divergence originates in steps 1--2 (61\,\% in the earlier collection),
+    enabling lightweight early-step monitoring.}
+  \label{fig:divergence}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig10_correctness_vs_consistency.pdf}
+  \caption{Correctness rate versus consistency on the fresh collection (114
+    conditions, 1{,}140 traces, same sample as all consistency results).
+    \textbf{Left:} correctness vs.\ $\tss$ ($r = 0.06$, n.s.; Spearman
+    $\rho = 0.22$, $p = 0.017$). \textbf{Right:} correctness vs.\ $\ac$
+    ($r = -0.17$, $p = 0.07$). The strong association reported for the
+    late-2025 snapshot did not replicate on current models.}
+  \label{fig:correctness}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{figures/fig7_model_category_heatmap.pdf}
+  \caption{$\tss$ across models and task categories (fresh collection).
+    Llama~3.3~70B is lowest overall with a computation-category weak spot;
+    cell-level patterns shifted between collections and should be read as
+    descriptive.}
+  \label{fig:heatmap}
+\end{figure}
+
+\section{Extended Discussion}
+\label{app:extdisc}
+
+This appendix collects the full limitations list, the additional
+statistical-analysis detail, the relation-to-prior-work discussion, and the
+future directions referenced from Section~\ref{sec:stats} and the Limitations
+section. They are relocated here to keep the main body within
+the page limit; no content differs from what would otherwise appear in the main
+text.
+
+\subsection*{Provenance Note}
+
+For the record, and because an earlier version of this paper mishandled these
+points: the original late-2025 collection's raw traces were not preserved and
+its models were not version-pinned, and its correctness analysis used a
+mismatched sample without disclosure. The present version's primary results are
+computed end-to-end from the released fresh (July 2026) traces; the earlier
+collection appears only as summary-level comparison, labeled as such.
+
+\subsection*{Statistical Analysis (Additional Detail)}
+
+We test five primary hypotheses with Bonferroni correction at $\alpha = 0.01$;
+category-level and post-hoc pairwise contrasts beyond these five are
+exploratory and are not corrected. Split-half reliability (TSS: $r = 0.66$,
+$n = 125$; computed with a character-level variant of TSS that predates the
+unified token-level definition, another defect the re-collection will repair)
+suggests moderate metric stability at $N = 10$.
+
+\subsection*{Full Limitations}
+
+\begin{itemize}[leftmargin=1.5em]
+  \item \textbf{Sample size.} $N = 10$ runs per cell yields split-half
+    reliability $r = 0.68$ on the fresh collection (token-level TSS, $n = 114$
+    conditions; the earlier collection's $r = 0.66$ used a character-level
+    variant). Aggregate results are well-powered (1,140 traces), but per-cell
+    CIs are wide. Future work should use $N \geq 30$.
+  \item \textbf{Single temperature.} We measure at $T = 1.0$ only. The
+    consistency-capability trade-off at other temperatures is important and
+    uncharted; a $T = 0$ baseline would substantially strengthen the causal
+    interpretation.
+  \item \textbf{Structured correctness proxy.} Our rubric is not a full
+    semantic evaluation, and it shares a construction-level dependence on tool
+    selection with $\tss$ (Section~\ref{sec:correctness}). Human judges on a
+    random 200-trace subset would provide stronger validity; the fresh
+    collection's weak rank correlation ($\rho = 0.22$, $p = 0.017$) is the
+    honest current support.
+  \item \textbf{Limited tasks per category.} 3--4 tasks per category makes
+    category-level estimates imprecise. $\geq$10 tasks per category are needed for
+    reliable inference.
+  \item \textbf{Single system prompt.} Consistency may vary substantially with
+    chain-of-thought prompting, few-shot examples, or persona instructions.
+  \item \textbf{Simulated tools.} Deterministic tools isolate LLM variance but may
+    overestimate real-world consistency where tool outputs themselves vary.
+  \item \textbf{Provider coverage.} Google Gemini and Mistral are absent, limiting
+    generalizability.
+  \item \textbf{AC alignment.} AC aligns arguments by step index, conflating
+    structural and argument divergence at misaligned steps. A disentangled metric
+    would be more informative.
+\end{itemize}
+
+\subsection*{Relation to Prior Work}
+
+\citet{mehta2026disagree} reported 2.0--4.2 unique action sequences per 10 runs
+on HotpotQA ReAct agents; we observe 1.6--3.3 unique tool-call sequences, broadly
+consistent. Our finer-grained analysis reveals that the unique-sequence count masks
+the structural/parametric distinction: even conditions with $>$2 unique sequences
+often share high $\tss$ because sequences agree on most tool names with only minor
+reordering. Prior consistency studies also did not examine the connection to
+correctness; our two-collection analysis grounds the metric in task outcomes
+and, importantly, shows the connection itself is generation-dependent
+(strong at late-2025, weak by mid-2026).
+
+\subsection*{Future Directions}
+
+\begin{enumerate}[leftmargin=1.5em]
+  \item \textbf{Temperature ablation:} map the full consistency-capability
+    Pareto frontier.
+  \item \textbf{Larger benchmark:} $\geq$10 tasks per category, $\geq$50 total.
+  \item \textbf{Human correctness evaluation:} human judges on 200 traces.
+  \item \textbf{Consistency-aware routing:} route tasks to models based on
+    predicted $\tss$.
+  \item \textbf{Multi-turn and long-horizon agents:} web agents, coding agents.
+  \item \textbf{Fine-tuning effects:} does RLHF explicitly optimize
+    consistency?
+  \item \textbf{Real API tools:} study whether environmental non-determinism
+    amplifies or dampens LLM behavioral variance.
+\end{enumerate}
+
+\section{Extended Related Work}
+\label{app:relwork}
+
+This appendix expands the condensed Related Work in the main body; it is
+relocated here to keep the main body within the page limit and its content is
+unchanged.
+
+\paragraph{Behavioral consistency in LLM agents.}
+The closest prior work is $\tau$-bench~\citep{yao2024taubench}, which
+evaluates tool--agent--user interaction with the \passk{} metric (``all $k$
+attempts succeed'') and finds frontier agents highly inconsistent across
+trials, establishing that reliability-over-trials in structured
+tool-calling is a first-order problem. Our contribution relative to
+$\tau$-bench is a \emph{label-free decomposition}: \passk{} measures
+whether repeated attempts \emph{succeed}, which requires ground truth, while
+TSS/AC measure whether repeated attempts \emph{agree}, which does not, and
+our two-level split localizes the disagreement (structure vs.\ arguments).
+\citet{mehta2026disagree} measured consistency in ReAct agents on HotpotQA
+using search-only actions, finding inconsistency predicts failure; we extend
+to typed tool calls with diverse tool sets and task types.
+\citet{wang2023selfconsistency} showed that sampling multiple reasoning chains and
+marginalizing improves accuracy; this \emph{leverages} variance rather than
+characterizing its structure, and focuses on reasoning rather than tool calls.
+\citet{renze2024self} studied self-reflection in LLM agents and found mixed
+effects, suggesting that deliberate consistency-improving strategies do not
+uniformly help.
+
+\paragraph{LLM reliability and robustness.}
+A mechanistic strand explains \emph{why} identical requests yield different
+outputs even at temperature zero: batch-size-dependent reduction kernels and
+floating-point non-associativity in inference servers
+\citep{thinking2025nondeterminism,atil2024nondeterminism}. Our study
+deliberately measures the deployed reality at $T{=}1.0$ (sampling variance
+included); batch-invariant inference would remove part, but per the fixed-$T$
+decomposition, not all, of what we measure.
+\citet{sclar2024quantifying} quantified LLM sensitivity to prompt formatting,
+finding large swings from superficial changes.
+\citet{lu2022fantastically} demonstrated order sensitivity in few-shot prompts.
+\citet{perez2022true} showed that standard NLP evaluations underestimate
+robustness failures.
+Our focus is orthogonal: we hold the input fixed and measure variance across
+repeated identical invocations, the consistency a deployed system must have by
+definition.
+
+\paragraph{Agent capability evaluation.}
+AgentBench~\citep{liu2023agentbench}, ToolBench~\citep{qin2023toolllm},
+API-Bank~\citep{li2023apibank}, and Gorilla~\citep{patil2023gorilla} evaluate
+whether agents \emph{can} solve tasks.
+\citet{schick2023toolformer} showed LLMs can learn tool use from self-generated
+demonstrations.
+\citet{kapoor2024ai} surveyed pitfalls in AI agent evaluations, noting that
+variance across runs is rarely reported.
+We evaluate not whether agents succeed but whether they \emph{consistently} succeed
+in the same way, an orthogonal, understudied dimension.
+
+\paragraph{Reliability in ML systems.}
+The broader ML reliability literature addresses distribution shift,
+uncertainty quantification~\citep{lakshminarayanan2017simple}, and
+out-of-distribution detection, all concerned with performance under changed
+\emph{inputs}.
+We study consistency under repeated \emph{identical} inputs, a related but distinct
+concern that matters specifically for agentic systems where tasks are retried and
+behavioral reproducibility is a correctness criterion in its own right.
 
 \end{document}

@@ -69,8 +69,8 @@ Unlike prior work on consistency in ReAct-style agents (search-only, free-text
 actions), we study the richer setting of \emph{structured tool-calling interfaces}
 with typed parameters and consequential side effects.
 
-Using a benchmark of 19 tasks across five categories---data retrieval, scheduling,
-computation, multi-tool composition, and ambiguous requests---we evaluate six
+Using a benchmark of 19 tasks across five categories (data retrieval, scheduling,
+computation, multi-tool composition, and ambiguous requests), we evaluate six
 models from three providers (OpenAI, Anthropic, Meta/Together) across 1,140
 total agent traces. We identify a \textbf{``structural consistency, parametric
 variance'' pattern}: agents reliably select the same tools in the same order
@@ -87,8 +87,8 @@ match) even when tool sequences are identical; and (4) \textbf{models differ
 significantly in structural but not argument consistency}
 ($F=3.52$, $\eta^2=0.15$, $p=0.003$ for $\tss$; n.s.\ for $\ac$).
 Critically, a correctness analysis shows that \textbf{structural consistency
-predicts task success}---high-$\tss$ conditions achieve 90.2\,\% correctness
-versus 61.2\,\% for low-$\tss$ ($d=0.81$, $p<0.001$)---while argument-level
+predicts task success}, high-$\tss$ conditions achieve 90.2\,\% correctness
+versus 61.2\,\% for low-$\tss$ ($d=0.81$, $p<0.001$), while argument-level
 variance is benign ($r=0.12$, $p=0.31$, n.s.). This makes $\tss$ a lightweight,
 correctness-free proxy for agent reliability, actionable without ground-truth
 labels.
@@ -188,7 +188,7 @@ finding large swings from superficial changes.
 \citet{perez2022true} showed that standard NLP evaluations underestimate
 robustness failures.
 Our focus is orthogonal: we hold the input fixed and measure variance across
-repeated identical invocations---the consistency a deployed system must have by
+repeated identical invocations, the consistency a deployed system must have by
 definition.
 
 \paragraph{Agent capability evaluation.}
@@ -200,12 +200,12 @@ demonstrations.
 \citet{kapoor2024ai} surveyed pitfalls in AI agent evaluations, noting that
 variance across runs is rarely reported.
 We evaluate not whether agents succeed but whether they \emph{consistently} succeed
-in the same way---an orthogonal, understudied dimension.
+in the same way, an orthogonal, understudied dimension.
 
 \paragraph{Reliability in ML systems.}
 The broader ML reliability literature addresses distribution shift,
 uncertainty quantification~\citep{lakshminarayanan2017simple}, and
-out-of-distribution detection---all concerned with performance under changed
+out-of-distribution detection, all concerned with performance under changed
 \emph{inputs}.
 We study consistency under repeated \emph{identical} inputs, a related but distinct
 concern that matters specifically for agentic systems where tasks are retried and
@@ -240,11 +240,11 @@ under a metric $d(\cdot, \cdot)$ over traces.
 This framing reveals a natural hierarchy of behavioral layers:
 \begin{enumerate}[leftmargin=1.5em]
   \item \textbf{Structural layer}: the sequence of tool names
-    $(\mathtt{name}_1, \ldots, \mathtt{name}_k)$---the agent's \emph{procedural
+    $(\mathtt{name}_1, \ldots, \mathtt{name}_k)$, the agent's \emph{procedural
     choice}.
   \item \textbf{Argument layer}: the argument maps $\mathbf{a}_i$ at each
-    step---\emph{how} the procedure is parameterized.
-  \item \textbf{Output layer}: the final response $r$---the surface-level text
+    step, \emph{how} the procedure is parameterized.
+  \item \textbf{Output layer}: the final response $r$, the surface-level text
     the user sees.
 \end{enumerate}
 
@@ -257,7 +257,7 @@ argument consistency: $\mathbb{E}[\tss] \gg \mathbb{E}[\ac]$.
 \end{hypothesis}
 
 The intuition is that RLHF and SFT fine-tuning on tool-use data reinforces correct
-\emph{procedure selection}---which carries a cleaner training signal---while
+\emph{procedure selection}, which carries a cleaner training signal, while
 \emph{argument instantiation} remains more sensitive to sampling-time variation.
 Figure~\ref{fig:conceptual} illustrates the pattern concretely.
 
@@ -306,7 +306,7 @@ be the flattened key-value set. Then
 \]
 where $\mathcal{S}$ indexes all step-aligned pairs. When traces call different
 tools at step $i$, their key-value sets are disjoint, yielding $\ac = 0$ for that
-step---so $\ac$ partially captures structural divergence as well. Our correctness
+step, so $\ac$ partially captures structural divergence as well. Our correctness
 analysis (Section~\ref{sec:correctness}) empirically disentangles the two effects.
 \end{definition}
 
@@ -429,8 +429,8 @@ $[0.64, 0.74]$ (paired $t$-test: $t = 8.41$, $p < 10^{-13}$; Cohen's
 $d = 0.75$). The pattern holds across all models and categories
 (Table~\ref{tab:model_comparison}, Figure~\ref{fig:model_comparison}).
 
-\finding{\textbf{Finding 1.} Agents learn robust procedural schemas---the tool
-sequence ``recipe''---but vary in instantiation details such as search queries,
+\finding{\textbf{Finding 1.} Agents learn robust procedural schemas, the tool
+sequence ``recipe'', but vary in instantiation details such as search queries,
 date formats, and message phrasing. The structural/parametric gap is $d = 0.75$,
 $p < 10^{-13}$.}
 
@@ -451,7 +451,7 @@ Claude Sonnet~4  & $.88\ [.79, .96]$ & $.76\ [.64, .88]$ & 4.7\,\% & 2.2 \\
 GPT-4o           & $.87\ [.79, .96]$ & $.57\ [.41, .74]$ & 7.5\,\% & 1.6 \\
 Llama 3.3 70B    & $.71\ [.61, .82]$ & $.65\ [.50, .79]$ & 1.4\,\% & 3.3 \\
 \midrule
-\textit{o1}$^\dagger$ & \textit{.89} & \textit{.58} & --- & --- \\
+\textit{o1}$^\dagger$ & \textit{.89} & \textit{.58} & n/a & n/a \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -543,7 +543,7 @@ against a reference trace captures 60\,\% of all behavioral variance.}
 
 Final natural language responses exhibit near-zero exact-match rates ($<$5\,\%
 overall) even when the underlying tool-calling sequences are identical. This is
-expected---language generation is inherently variable---but it has a critical
+expected, language generation is inherently variable, but it has a critical
 implication for testing: \textbf{agent tests must assert on structured tool-calling
 behavior, not natural language output.} Asserting on text is analogous to writing
 software tests that check log messages rather than return values.
@@ -560,8 +560,8 @@ predictor: Pearson $r = 0.32$ ($p = 0.005$), Spearman $\rho = 0.42$
 
 Crucially, $\ac$ does not predict correctness ($r = 0.12$, $p = 0.31$, n.s.).
 Agents may phrase search queries differently, format dates differently, or vary
-message bodies across runs---none of this impairs task success. It is
-\emph{structural} variance---selecting different or missing tools---where failures
+message bodies across runs, none of this impairs task success. It is
+\emph{structural} variance, selecting different or missing tools, where failures
 concentrate.
 
 \begin{figure}[t]
@@ -621,8 +621,8 @@ suggesting a systematic cause rooted in how LLMs acquire tool-use behavior.
 Training corpora for tool-calling likely contain many demonstrations of the same
 high-level task type solved with the same tool sequence, but with varied argument
 values (different names, dates, query strings) across instances. RLHF/SFT
-reinforces correct \emph{procedure selection}---which carries a cleaner correctness
-signal---while argument instantiation remains more sensitive to sampling-time
+reinforces correct \emph{procedure selection}, which carries a cleaner correctness
+signal, while argument instantiation remains more sensitive to sampling-time
 variation. This ``procedural schema'' interpretation is directly supported by our
 correctness analysis: argument variance ($\ac$) does not predict failure ($r =
 0.12$, n.s.), meaning the variations are largely semantically equivalent (e.g.,
@@ -657,7 +657,7 @@ evaluation, which is often expensive or infeasible online.
     a lightweight check on the first two tool calls suffices to flag most
     inconsistent runs.
   \item \textbf{Test tool calls, not text.} Assert on tool names and argument
-    patterns---not natural language output, which varies below 5\,\% exact match
+    patterns, not natural language output, which varies below 5\,\% exact match
     even in consistent runs.
   \item \textbf{Use $\tss$ as an online reliability signal.} A run whose tool
     sequence deviates from a reference trace is nearly three times more likely to
@@ -734,15 +734,15 @@ traces, we identify a ``structural consistency, parametric variance'' pattern th
 is large ($d = 0.75$) and highly significant ($p < 10^{-13}$): agents reliably
 select the same tools in the same order but vary in argument details. Critically,
 only the structural layer predicts task success ($d = 0.81$, $p < 0.001$), while
-argument variance is benign ($r = 0.12$, n.s.)---validating the pattern and
+argument variance is benign ($r = 0.12$, n.s.), validating the pattern and
 ruling out trivial consistency. Task specification quality outweighs model
 selection as a consistency lever, divergence concentrates early in the pipeline,
 and $\tss$ serves as a lightweight, correctness-free reliability proxy.
 
 These findings suggest that LLMs acquire robust procedural schemas for tool use
 through training, while argument instantiation remains sensitive to sampling
-variation. Understanding and exploiting this structure---testing on tool calls not
-text, monitoring early steps, flagging low-$\tss$ runs---is a practical path
+variation. Understanding and exploiting this structure (testing on tool calls not
+text, monitoring early steps, flagging low-$\tss$ runs) is a practical path
 toward more reliable agentic systems.
 
 % Acknowledgements omitted for the arXiv preprint.

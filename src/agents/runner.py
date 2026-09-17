@@ -63,10 +63,20 @@ Rules:
 MAX_ITERATIONS = 10
 
 
+def _openrouter_client_kwargs():
+    """Route through OpenRouter (OpenAI-compatible, all providers, pinned IDs)
+    when OPENROUTER_API_KEY is set."""
+    import os
+    key = os.environ.get("OPENROUTER_API_KEY")
+    if key:
+        return {"base_url": "https://openrouter.ai/api/v1", "api_key": key}
+    return {}
+
+
 def run_agent_openai(model: str, task: str, tools_schemas: list, execute_fn) -> AgentTrace:
-    """Run an agent loop using OpenAI's API."""
+    """Run an agent loop using OpenAI's API (or OpenRouter when configured)."""
     from openai import OpenAI
-    client = OpenAI()
+    client = OpenAI(**_openrouter_client_kwargs())
 
     trace = AgentTrace(task_id="", model=model, run_index=0)
     messages = [
@@ -364,6 +374,17 @@ PROVIDERS = {
     "llama-3.1-8b": ("together", "meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo"),
 }
 
+# Pinned OpenRouter IDs: with OPENROUTER_API_KEY set, every model runs through
+# the OpenAI-compatible loop (OpenRouter normalizes tool calls across providers).
+OPENROUTER_IDS = {
+    "gpt-4o-mini": "openai/gpt-4o-mini-2024-07-18",
+    "gpt-4o": "openai/gpt-4o-2024-08-06",
+    "gpt-4.1": "openai/gpt-4.1",
+    "gpt-4.1-mini": "openai/gpt-4.1-mini",
+    "claude-sonnet-4": "anthropic/claude-sonnet-4",
+    "llama-3.3-70b": "meta-llama/llama-3.3-70b-instruct",
+}
+
 RUNNER_MAP = {
     "openai": run_agent_openai,
     "openai-reasoning": run_agent_openai_reasoning,
@@ -378,5 +399,8 @@ def run_agent(model_key: str, task: str, tools_schemas: list, execute_fn) -> Age
     if model_key not in PROVIDERS:
         raise ValueError(f"Unknown model: {model_key}. Available: {list(PROVIDERS.keys())}")
     provider, model_id = PROVIDERS[model_key]
+    import os
+    if os.environ.get("OPENROUTER_API_KEY") and model_key in OPENROUTER_IDS:
+        provider, model_id = "openai", OPENROUTER_IDS[model_key]
     runner = RUNNER_MAP[provider]
     return runner(model_id, task, tools_schemas, execute_fn)
