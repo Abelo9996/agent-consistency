@@ -36,9 +36,12 @@ print()
 print('Ambiguity (category == ambiguous) vs rest, AC:')
 amb = ac[cat=='ambiguous']; rest = ac[cat!='ambiguous']
 print('  amb n=%d mean %.4f | rest n=%d mean %.4f | rel drop %.1f%%' % (len(amb),amb.mean(),len(rest),rest.mean(),100*(1-amb.mean()/rest.mean())))
-t2,p2 = stats.ttest_ind(amb,rest,equal_var=False)
+# Equal-variance (Student) t-test, matching the paper's naive ambiguity contrast
+# and scripts/mixed_models.py; reported only as a naive comparison to the
+# clustered inference, which is the primary test.
+t2,p2 = stats.ttest_ind(amb,rest,equal_var=True)
 spd = np.sqrt(((len(amb)-1)*amb.var(ddof=1)+(len(rest)-1)*rest.var(ddof=1))/(len(amb)+len(rest)-2))
-print('  Welch t=%.3f p=%.4f  Cohen d=%.3f' % (t2,p2,(rest.mean()-amb.mean())/spd))
+print('  Student t=%.3f p=%.4f  Cohen d=%.3f' % (t2,p2,(rest.mean()-amb.mean())/spd))
 
 print()
 for name,x in (('TSS',tss),('AC',ac)):
