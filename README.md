@@ -3,13 +3,14 @@
 **How Consistent Are LLM Agents? Measuring Behavioral Reproducibility in Multi-Step Tool-Calling Pipelines**
 
 [![Paper](https://img.shields.io/badge/Paper-PDF-red)](paper/main.pdf)
+[![arXiv](https://img.shields.io/badge/arXiv-2605.28840-b31b1b.svg)](https://arxiv.org/abs/2605.28840)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-> When you give the same task to an LLM agent twice, does it behave the same way? We find a striking pattern: **agents reliably pick the same tools in the same order, but vary significantly in how they parameterize those calls**—and this structural consistency predicts whether the agent succeeds.
+> When you give the same task to a tool-calling LLM agent twice, does it behave the same way? We measure where in the pipeline the instability lives. Agents reliably select the same tools in the same order, but vary more in the arguments they pass to those tools. We call this "structural consistency, parametric variance." All results below are from the released traces; every headline number is reproducible with the scripts in `analysis/`.
 
 ---
 
-## 📊 Key Results
+## 📊 Key results
 
 <p align="center">
   <img src="paper/figures/fig4_model_comparison.png" width="80%" alt="Model comparison across TSS and AC">
@@ -17,120 +18,116 @@
 
 | Finding | Result |
 |---------|--------|
-| Tool sequence similarity (TSS) | **0.87** mean across all models |
-| Argument consistency (AC) | **0.69** mean — significantly lower (d=0.75, p<10⁻¹³) |
-| Ambiguity reduces AC by | **28%** (d=0.74, p=0.001) |
-| Divergence in first 2 steps | **60%** of all behavioral variance |
-| Output exact match | **<5%** even when tool calls are identical |
-| High-TSS → correctness | **90.2%** vs 61.2% for low-TSS (d=0.81) |
+| Tool Sequence Similarity (TSS), mean | **0.88** (95% CI [0.85, 0.91]) |
+| Argument Consistency (AC), mean | **0.70** (95% CI [0.65, 0.75]) |
+| Structure vs arguments gap | paired d = 0.76, p = 2e-12; survives a crossed random-effects model (TSS - AC = 0.177, 95% CI [0.124, 0.231]) and a task-level cluster bootstrap ([0.11, 0.25]) |
+| First-divergence events in steps 1 to 2 | **64%** of diverging run pairs (short-horizon tasks; see the caveat below) |
+| Output exact-string match | **4.1%** of run pairs, even when tool sequences are identical |
+| Ambiguity effect on AC | directional 13% drop, but **does not survive clustering** (d = 0.33, p = 0.25; by-task bootstrap CI [-0.10, 0.28]) |
+| Cross-model differences | modest (eta^2 approx 0.10) but **survive** clustering (mixed-model LR p = 0.02 for TSS, p = 0.006 for AC) |
 
-### The "Structural Consistency, Parametric Variance" Pattern
+**Metric-comparability caveat.** TSS (normalized edit similarity over tool-name sequences) and AC (step-aligned Jaccard over argument key-value sets) are different similarity functions on different objects. Their numerical values are **not** directly comparable, so a TSS of 0.88 and an AC of 0.70 do not mean structure is 0.18 "more consistent." We report the direction and size of the gap within a common similarity family and calibrate both metrics against chance and known perturbations in `analysis/metric_ablation.py`; the structure-over-arguments ordering holds across similarity families.
 
-Agents learn robust *procedures*—the recipe for solving a task—but vary in *instantiation details* like search queries, date formats, and message phrasing. Crucially, this parametric variance is **benign**: it doesn't hurt task success (r=0.12, n.s.). Structural variance is where failures concentrate.
+### The "structural consistency, parametric variance" pattern
 
-<p align="center">
-  <img src="paper/figures/fig10_correctness_vs_consistency.png" width="80%" alt="Consistency predicts correctness">
-</p>
-
----
-
-## 🏗️ Benchmark Design
-
-**19 tasks** across 5 categories of increasing ambiguity, evaluated with **10 deterministic simulated tools**:
-
-| Category | Tasks | Description | Expected Consistency |
-|----------|-------|-------------|---------------------|
-| Data Retrieval | 4 | Contact lookups, email search, aggregation | High |
-| Scheduling | 4 | Calendar events, conflict detection, free slots | High |
-| Computation | 3 | Inventory calculations, revenue projections | High |
-| Multi-Tool Composition | 4 | 3–5 tools in sequence (e.g., find email → lookup sender → schedule meeting) | Medium |
-| Ambiguous | 4 | Intentionally underspecified (e.g., "prepare for my meetings tomorrow") | Low |
-
-<p align="center">
-  <img src="paper/figures/fig1_consistency_by_category.png" width="48%" alt="Consistency by category">
-  <img src="paper/figures/fig7_model_category_heatmap.png" width="48%" alt="Model × category heatmap">
-</p>
-
-All tools are **fully deterministic**—identical inputs always produce identical outputs. This isolates LLM variance from environment variance.
+Repeated runs of one fixed model on one fixed input tend to follow the same procedure (which tools, in what order) more than they instantiate the same arguments (search strings, date formats, message text). We label the training explanation (procedural schemas from RLHF/SFT) a **hypothesis the paper does not test**, and name alternatives it cannot rule out (tool schemas constraining procedure more than arguments; sharper decoding over a short tool-name vocabulary).
 
 ---
 
-## 🤖 Models Evaluated
+## ⚠️ Scope and honest limits
 
-| Model | Provider | TSS | AC | Unique Sequences |
+- **Short-horizon tasks.** Trace lengths are short (mean 2.57 tool calls, median 2, range 0 to 19). When first-divergence steps are normalized by trajectory length, the median first divergence sits at 0.78 of the trajectory, so the "divergence is early" reading is weak; we scope the early-divergence observation to short-horizon pipelines rather than to agents that span tens or hundreds of calls.
+- **Consistency is not correctness.** On the fresh mid-2026 models (markedly more consistent, median condition-level TSS = 1.0) the TSS-correctness association is a weak rank correlation (Spearman rho = 0.22, p = 0.017; Pearson n.s.) and the AC-correctness correlation is not distinguishable from zero. We present TSS as a variance signal whose predictive value declines as models grow more consistent, **not** as a correctness proxy.
+- **Two non-equivalent snapshots.** The comparison to a late-2025 collection is a descriptive comparison of two non-equivalent instruments (unpinned 2025 model aliases, a different API path, and 2025 raw traces not preserved), not a controlled replication or a claim of model progress.
+- **All inference is clustered.** The design is crossed (19 tasks x 6 models) and clustered; primary inference is a crossed random-effects mixed model plus a task-level cluster bootstrap and a task-stratified permutation test (`analysis/mixed_models.py`). Naive t-tests and ANOVAs are reported only for comparison.
+
+---
+
+## 🏗️ Benchmark design
+
+**19 tasks** across 5 categories of increasing ambiguity, evaluated with **deterministic simulated tools**:
+
+| Category | Tasks | Description |
+|----------|-------|-------------|
+| Data retrieval | 4 | Contact lookups, email search, aggregation |
+| Scheduling | 4 | Calendar events, conflict detection, free slots |
+| Computation | 3 | Inventory calculations, revenue projections |
+| Multi-tool composition | 4 | 3 to 5 tools in sequence (find email, look up sender, schedule meeting) |
+| Ambiguous | 4 | Intentionally underspecified ("prepare for my meetings tomorrow") |
+
+All tools are **fully deterministic**: identical inputs always produce identical outputs, which isolates model variance from environment variance.
+
+---
+
+## 🤖 Models evaluated
+
+Per-model means over 19 tasks (recompute with `analysis/verify.py`):
+
+| Model | Provider | TSS | AC | Unique seqs / 10 |
 |-------|----------|-----|-----|-----------------|
-| GPT-4.1-mini | OpenAI | **0.92** | **0.81** | 1.6 |
-| GPT-4.1 | OpenAI | 0.91 | 0.69 | 1.6 |
-| GPT-4o-mini | OpenAI | 0.90 | 0.66 | 1.8 |
-| Claude Sonnet 4 | Anthropic | 0.88 | 0.76 | 2.2 |
-| GPT-4o | OpenAI | 0.87 | 0.57 | 1.6 |
-| Llama 3.3 70B | Meta/Together | 0.71 | 0.65 | **3.3** |
+| GPT-4.1 | OpenAI | 0.949 | 0.789 | 1.32 |
+| GPT-4.1-mini | OpenAI | 0.895 | 0.783 | 1.63 |
+| GPT-4o-mini | OpenAI | 0.879 | 0.676 | 1.89 |
+| GPT-4o | OpenAI | 0.883 | 0.635 | 1.74 |
+| Claude Sonnet 4 | Anthropic | 0.880 | 0.770 | 2.26 |
+| Llama 3.3 70B | Meta | 0.773 | 0.542 | 3.11 |
 
-**6 models × 19 tasks × 10 runs = 1,140 agent traces** (+ partial o1 results on 7 tasks).
-
-All runs at **temperature 1.0** (default deployment conditions).
+**6 models x 19 tasks x 10 runs = 1,140 agent traces**, collected July 2026 through a single provider-normalized (OpenAI-style) gateway with version-pinned model identifiers. All 1,140 raw traces are released in `results/`. Temperature is 1.0 (the gateway default); we report a single setting and do not characterize other temperatures.
 
 ---
 
 ## 📏 Metrics
 
-- **Tool Sequence Similarity (TSS):** Mean pairwise normalized Levenshtein similarity over tool-name sequences. Ranges 0–1.
-- **Argument Consistency (AC):** Mean pairwise Jaccard similarity over flattened key-value pairs at aligned step positions.
-- **Unique Sequences:** Number of distinct tool-call sequences across N=10 runs.
-- **Divergence Point:** Mean step index where traces first differ.
-- **Output Agreement:** Exact-match rate of final natural language responses.
+- **Tool Sequence Similarity (TSS):** mean pairwise normalized Levenshtein similarity over tool-name sequences ("do runs follow the same procedure").
+- **Argument Consistency (AC):** mean pairwise Jaccard overlap of key-value argument sets at step-aligned calls ("do runs parameterize it the same way").
+- **First-divergence step:** the step at which a run pair first differs; identical pairs contribute no event, so the denominator is the set of diverging pairs.
+- **Output agreement:** exact-string match rate of the full final natural-language response (no normalization or semantic matching; the low rate shows exact-string assertions on free text will fail, not that output carries no signal).
+
+See the metric-comparability caveat above; `analysis/metric_ablation.py` reports AC restricted to aligned same-tool calls and both metrics under a common similarity family and against chance/perturbation baselines.
 
 ---
 
-## 🔬 Practical Implications
+## 🔬 Reproducing the paper's numbers
 
-1. **Reduce ambiguity in task specs** — strongest lever on consistency (stronger than model choice)
-2. **Monitor early steps** — 60% of variance is in steps 1–2; a lightweight check catches most issues
-3. **Test tool calls, not text** — assert on structured behavior, not natural language output
-4. **Use TSS as a reliability proxy** — high structural consistency predicts task success without needing correctness labels
-
-<p align="center">
-  <img src="paper/figures/fig3_divergence_points.png" width="60%" alt="Divergence points distribution">
-</p>
-
----
-
-## 🚀 Quick Start
+Every number the paper reports is re-derived from `results/experiment_20260705_205523.json` by the scripts in `analysis/`:
 
 ```bash
-# Clone and install
-git clone https://github.com/Abelo9996/agent-consistency.git
-cd agent-consistency
-pip install -r requirements.txt
+pip install -r requirements.txt   # numpy, scipy, statsmodels, patsy
 
-# Set up API keys
-cp .env.example .env
-# Edit .env with your OpenAI, Anthropic, and Together AI keys
+python analysis/verify.py          # TSS, AC, effect size, output match, per-model, length distribution
+python analysis/divergence.py      # first-divergence statistics and denominators
+python analysis/mixed_models.py    # crossed random-effects model + cluster bootstrap + permutation
+python analysis/metric_ablation.py # common-family ablation, AC decomposition, chance/perturbation baselines
+```
 
-# Run experiments
-python -m src.runners.run_experiment --experiment exp1 --judges gpt-4o-mini gpt-4.1-mini
+All four read `results/...` relative to the repository root; run them from there.
 
-# Generate figures
+### Re-running the experiment from scratch (optional)
+
+```bash
+cp .env.example .env               # add your OpenAI / Anthropic / Together keys
+python -m src.runners.run_experiment --experiment exp1
 python -m src.analysis.generate_figures
 ```
 
 ---
 
-## 📁 Repository Structure
+## 📁 Repository structure
 
 ```
 agent-consistency/
 ├── src/
 │   ├── tasks/          # 19 task definitions with tool schemas
-│   ├── agents/         # Agent runner (multi-provider tool-calling loop)
+│   ├── agents/         # Agent runner (provider-normalized tool-calling loop)
 │   ├── metrics/        # TSS, AC, divergence point, output agreement
 │   ├── runners/        # Experiment orchestration
 │   ├── analysis/       # Figure generation
-│   └── tools.py        # 10 deterministic simulated tools
+│   └── tools.py        # Deterministic simulated tools
+├── analysis/           # Reproducibility scripts for every headline number
 ├── configs/            # Experiment configuration (YAML)
 ├── figures/            # Generated figures (PDF + PNG)
 ├── paper/              # LaTeX source + compiled PDF
-├── results/            # Raw trace data (gitignored)
+├── results/            # Raw trace data: all 1,140 traces (released)
 ├── requirements.txt
 └── .env.example
 ```
@@ -144,7 +141,9 @@ agent-consistency/
   title={How Consistent Are LLM Agents? Measuring Behavioral Reproducibility in Multi-Step Tool-Calling Pipelines},
   author={Yagubyan, Abel},
   year={2026},
-  note={Preprint}
+  eprint={2605.28840},
+  archivePrefix={arXiv},
+  primaryClass={cs.AI}
 }
 ```
 
@@ -152,8 +151,4 @@ agent-consistency/
 
 ## 📜 License
 
-MIT
-
----
-
-*Part of a series on LLM evaluation reliability. See also: [Benchmark Saturation](https://github.com/Abelo9996/benchmark-saturation).*
+Released under the MIT License. See [LICENSE](LICENSE).

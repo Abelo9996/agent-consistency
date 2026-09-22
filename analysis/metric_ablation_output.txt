@@ -1,0 +1,104 @@
+==============================================================================
+METRIC ABLATION  --  How Consistent Are LLM Agents? (revision)
+==============================================================================
+conditions: 114 | traces: 1140 | seed: 0
+stored means (from released metrics):  TSS = 0.8765   AC = 0.6992
+
+##############################################################################
+# 1. COMMON-FAMILY ABLATION
+#    Does 'structure > arguments' survive when BOTH layers use ONE
+#    similarity family? Per condition we compute a structure score and an
+#    argument score, then aggregate over the 114 conditions.
+##############################################################################
+
+family                                struct      args       gap   share s>=a
+-----------------------------------------------------------------------------
+EXACT (exact-match rate)              0.7772    0.6464    0.1308        82.5%
+JACCARD (set overlap)                 0.9100    0.6992    0.2108        91.2%
+EDIT (normalized edit similarity)     0.8754    0.6290    0.2463       100.0%
+
+ROBUSTNESS CLAIM: structure > arguments holds in ALL THREE families? YES
+   EXACT (exact-match rate)           structure 0.777 > arguments 0.646  (gap +0.131, holds)
+   JACCARD (set overlap)              structure 0.910 > arguments 0.699  (gap +0.211, holds)
+   EDIT (normalized edit similarity)  structure 0.875 > arguments 0.629  (gap +0.246, holds)
+
+##############################################################################
+# 2. AC DECOMPOSITION
+#    Separate structural contamination (wrong/extra/missing tool at a step)
+#    from genuine argument disagreement (right tool, different args).
+##############################################################################
+
+AC_raw     (paper AC, recomputed)   = 0.6992   [stored mean 0.6992]
+AC_aligned (bucket (a) only: same tool at step, pooled over pair-steps)
+           = 0.7366   [per-condition mean 0.7193]
+           -> AC_aligned exceeds AC_raw by +0.0374 (structure removed)
+
+Per (pair, step) bucket shares over the full per-pair step universe
+(N = 14312 pair-step observations):
+   (a) same tool at step        :  77.28%   (mean arg-Jaccard here = 0.7366)
+   (b) different tool at step   :   6.84%   (mean arg-Jaccard here = 0.0153)
+   (c) only one run has a call  :  15.87%   (missing / extra call)
+
+Shortfall (1 - AC_raw) attribution, paper-faithful denominator (a)+(b):
+   genuine argument disagreement (a):  75.14%
+   structural, wrong tool        (b):  24.86%
+
+Length-aware view: AC_full charges bucket (c) as 0.0 (missing/extra call).
+   AC_full = 0.5703
+   Shortfall (1 - AC_full) attribution:
+      genuine argument disagreement (a)     :  47.38%
+      structural / length effects   (b)+(c) :  52.62%
+
+##############################################################################
+# 3. CALIBRATION BASELINES
+##############################################################################
+
+CHANCE floor -- 5000 random run pairs from DIFFERENT tasks (unrelated):
+   mean TSS = 0.1184   (within-condition mean 0.8765)
+   mean AC  = 0.1715   (within-condition mean 0.6992)
+   above-chance margin:  TSS +0.7581   AC +0.5277
+
+PERTURBATION response -- start from identical run pairs (both metrics = 1.0),
+apply ONE known unit of error to one side, report resulting mean metric and
+the drop from 1.0.  (694 identical-twin base runs.)
+
+   single perturbation               mean TSS   mean AC
+   ----------------------------------------------------
+   (i)   delete one tool call          0.3553    0.7313
+   (ii)  substitute one tool name      0.3553    1.0000
+   (iii) change one argument value     1.0000    0.5396
+
+   drop from 1.0 (sensitivity to one unit of error):
+   (i)   delete one tool call       TSS -0.6447   AC -0.2687
+   (ii)  substitute one tool name   TSS -0.6447   AC -0.0000
+   (iii) change one argument value  TSS -0.0000   AC -0.4604
+
+   monotonic response, 1 vs 2 perturbations:
+      TSS after 1 / 2 deletions   : 0.3553 / 0.2170   (slope -0.1383 per deletion)
+      AC  after 1 / 2 arg changes : 0.5396 / 0.3399   (slope -0.1997 per change)
+   Both metrics decrease monotonically with added error; TSS is unaffected
+   by a pure argument change and AC is unaffected by a pure tool-name swap
+   (AC ignores tool identity), which is exactly the layer separation intended.
+
+##############################################################################
+# SUMMARY
+##############################################################################
+Common-family gaps (structure - arguments):
+   EXACT (exact-match rate)           0.777 - 0.646 = +0.131  (structure wins)
+   JACCARD (set overlap)              0.910 - 0.699 = +0.211  (structure wins)
+   EDIT (normalized edit similarity)  0.875 - 0.629 = +0.246  (structure wins)
+   -> structure > arguments in all three families: YES
+
+AC decomposition:
+   AC_raw = 0.6992   AC_aligned (same-tool steps) = 0.7366   (+0.0374)
+   bucket shares (a/b/c) = 77.3% / 6.8% / 15.9%
+   structural share of AC shortfall: 24.9% (paper denom (a)+(b)); 52.6% (length-aware (b)+(c))
+
+Chance floors:  TSS 0.1184 (vs 0.8765 within)   AC 0.1715 (vs 0.6992 within)
+
+Perturbation drops from 1.0:
+   delete one call:   TSS -0.6447 | AC -0.2687
+   substitute tool:   TSS -0.6447 | AC -0.0000
+   change one arg:    TSS -0.0000 | AC -0.4604
+
+[wrote LaTeX subsection -> /Users/abelyagubyan/Downloads/Abel_Research/agent-consistency-revision/scripts/metric_ablation_section.tex]
