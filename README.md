@@ -23,7 +23,7 @@
 | Structure vs arguments gap | paired d = 0.76, p = 2e-12; survives a crossed random-effects model (TSS - AC = 0.177, 95% CI [0.124, 0.231]) and a task-level cluster bootstrap ([0.11, 0.25]) |
 | First-divergence events in steps 1 to 2 | **64%** of diverging run pairs (short-horizon tasks; see the caveat below) |
 | Output exact-string match | **4.1%** of run pairs, even when tool sequences are identical |
-| Ambiguity effect on AC | directional 13% drop, but **does not survive clustering** (d = 0.33, p = 0.25; by-task bootstrap CI [-0.10, 0.28]) |
+| Ambiguity effect on AC | directional 13% drop, but **does not survive clustering** (d = 0.33, p = 0.16; by-task bootstrap CI [-0.10, 0.28]) |
 | Cross-model differences | modest (eta^2 approx 0.10) but **survive** clustering (mixed-model LR p = 0.02 for TSS, p = 0.006 for AC) |
 
 **Metric-comparability caveat.** TSS (normalized edit similarity over tool-name sequences) and AC (step-aligned Jaccard over argument key-value sets) are different similarity functions on different objects. Their numerical values are **not** directly comparable, so a TSS of 0.88 and an AC of 0.70 do not mean structure is 0.18 "more consistent." We report the direction and size of the gap within a common similarity family and calibrate both metrics against chance and known perturbations in `analysis/metric_ablation.py`; the structure-over-arguments ordering holds across similarity families.

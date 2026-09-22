@@ -1,0 +1,85 @@
+==============================================================
+Table 6 (tab:lengths) reproduced from results/experiment_20260705_205523.json
+==============================================================
+Group               Len.Mean  Len.Med  Div.step   Norm  <=2(%)
+--------------------------------------------------------------
+Claude Sonnet 4         3.21      3.0      3.02   0.71     47%
+GPT-4.1                 2.20      2.0      2.41   0.83     65%
+GPT-4.1-mini            2.12      2.0      2.22   0.76     66%
+GPT-4o                  2.53      2.0      2.01   0.73     74%
+GPT-4o-mini             2.83      2.0      2.17   0.73     63%
+Llama 3.3 70B           2.53      2.0      2.17   0.72     68%
+Retrieval               2.25      2.0      1.82   0.66     94%
+Scheduling              1.74      1.0      1.72   0.76     90%
+Computation             3.39      2.0      2.41   0.73     61%
+Composition             4.19      3.0      3.41   0.83     16%
+Ambiguous               1.48      1.0      1.69   0.71     81%
+All                     2.57      2.0      2.31   0.74     64%
+
+========================================================================
+VERIFICATION vs paper Table 6 (tol: +/-0.01 on decimals, +/-1 pp on <=2%)
+========================================================================
+Group              col         computed    paper   match
+------------------------------------------------------------
+Claude Sonnet 4    Len.Mean        3.21     3.21       OK
+Claude Sonnet 4    Len.Med          3.0      3.0       OK
+Claude Sonnet 4    Div.step        3.02     3.02       OK
+Claude Sonnet 4    Norm            0.71     0.71       OK
+Claude Sonnet 4    <=2(%)            47       47       OK
+GPT-4.1            Len.Mean        2.20     2.20       OK
+GPT-4.1            Len.Med          2.0      2.0       OK
+GPT-4.1            Div.step        2.41     2.41       OK
+GPT-4.1            Norm            0.83     0.83       OK
+GPT-4.1            <=2(%)            65       65       OK
+GPT-4.1-mini       Len.Mean        2.12     2.12       OK
+GPT-4.1-mini       Len.Med          2.0      2.0       OK
+GPT-4.1-mini       Div.step        2.22     2.22       OK
+GPT-4.1-mini       Norm            0.76     0.76       OK
+GPT-4.1-mini       <=2(%)            66       66       OK
+GPT-4o             Len.Mean        2.53     2.53       OK
+GPT-4o             Len.Med          2.0      2.0       OK
+GPT-4o             Div.step        2.01     2.01       OK
+GPT-4o             Norm            0.73     0.73       OK
+GPT-4o             <=2(%)            74       74       OK
+GPT-4o-mini        Len.Mean        2.83     2.83       OK
+GPT-4o-mini        Len.Med          2.0      2.0       OK
+GPT-4o-mini        Div.step        2.17     2.17       OK
+GPT-4o-mini        Norm            0.73     0.73       OK
+GPT-4o-mini        <=2(%)            63       63       OK
+Llama 3.3 70B      Len.Mean        2.53     2.53       OK
+Llama 3.3 70B      Len.Med          2.0      2.0       OK
+Llama 3.3 70B      Div.step        2.17     2.17       OK
+Llama 3.3 70B      Norm            0.72     0.72       OK
+Llama 3.3 70B      <=2(%)            68       68       OK
+Retrieval          Len.Mean        2.25     2.25       OK
+Retrieval          Len.Med          2.0      2.0       OK
+Retrieval          Div.step        1.82     1.82       OK
+Retrieval          Norm            0.66     0.66       OK
+Retrieval          <=2(%)            94       94       OK
+Scheduling         Len.Mean        1.74     1.74       OK
+Scheduling         Len.Med          1.0      1.0       OK
+Scheduling         Div.step        1.72     1.72       OK
+Scheduling         Norm            0.76     0.76       OK
+Scheduling         <=2(%)            90       90       OK
+Computation        Len.Mean        3.39     3.39       OK
+Computation        Len.Med          2.0      2.0       OK
+Computation        Div.step        2.41     2.41       OK
+Computation        Norm            0.73     0.73       OK
+Computation        <=2(%)            61       61       OK
+Composition        Len.Mean        4.19     4.19       OK
+Composition        Len.Med          3.0      3.0       OK
+Composition        Div.step        3.41     3.41       OK
+Composition        Norm            0.83     0.83       OK
+Composition        <=2(%)            16       16       OK
+Ambiguous          Len.Mean        1.48     1.48       OK
+Ambiguous          Len.Med          1.0      1.0       OK
+Ambiguous          Div.step        1.69     1.69       OK
+Ambiguous          Norm            0.71     0.71       OK
+Ambiguous          <=2(%)            81       81       OK
+All                Len.Mean        2.57     2.57       OK
+All                Len.Med          2.0      2.0       OK
+All                Div.step        2.31     2.32       OK
+All                Norm            0.74     0.74       OK
+All                <=2(%)            64       64       OK
+
+RESULT: ALL CELLS MATCH the paper Table 6 within tolerance.
