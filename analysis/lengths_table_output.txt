@@ -78,7 +78,7 @@ Ambiguous          Norm            0.71     0.71       OK
 Ambiguous          <=2(%)            81       81       OK
 All                Len.Mean        2.57     2.57       OK
 All                Len.Med          2.0      2.0       OK
-All                Div.step        2.31     2.32       OK
+All                Div.step        2.31     2.31       OK
 All                Norm            0.74     0.74       OK
 All                <=2(%)            64       64       OK
 
